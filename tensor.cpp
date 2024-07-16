@@ -6,8 +6,6 @@
 #include "function.h"
 
 
-// ------------------------------------------------------------------------------------------------------------
-
 Tensor* create_Tensor_full(float x, int* shape, int n_dim) {
     int size = 1;
     for (int i = 0; i < n_dim; i++) {
@@ -22,167 +20,172 @@ Tensor* create_Tensor_full(float x, int* shape, int n_dim) {
     return t;
 }
 
-    void Tensor::expand(int* new_shape) {
-        int i = 0;
-        for (; i < n_dim; i++) {
-            if (shape[i] == 1) {
-                break;
-            }
+void Tensor::expand(int* new_shape) {
+    int i = 0;
+    for (; i < n_dim; i++) {
+        if (shape[i] == 1) {
+            break;
         }
-        if (i == n_dim - 1) {
-            return;
-        }
-
-        strides[i] = 0;
-        shape = new_shape;
     }
-// ------------------------------------------------------------------------------------------------------------
-// funções padrão
-
-    Tensor* Tensor::t() {
-        if (n_dim != 2) {
-            printf("\nNúmero de dimensões deve ser 2 para transpor.");
-        }
-        float* new_data = new float[size];
-
-        for (int i = 0; i < shape[0]; ++i) {
-            for (int j = 0; j < shape[1]; ++j) {
-                new_data[j * shape[0] + i] = data[i * strides[0] + j * strides[1]];
-            }
-        }  
-        int new_shape[] = {shape[1], shape[0]};
-        Tensor* result = new Tensor(new_data, new_shape, n_dim, requires_grad);
-        return result;
+    if (i == n_dim - 1) {
+        return;
     }
 
-    void Tensor::t_() {
-        if (n_dim != 2) {
-            printf("\nNúmero de dimensões deve ser 2 para transpor.");
+    strides[i] = 0;
+    shape = new_shape;
+}
+
+Tensor* Tensor::t() {
+    if (n_dim != 2) {
+        printf("\nNúmero de dimensões deve ser 2 para transpor.");
+    }
+    float* new_data = new float[size];
+
+    for (int i = 0; i < shape[0]; ++i) {
+        for (int j = 0; j < shape[1]; ++j) {
+            new_data[j * shape[0] + i] = data[i * strides[0] + j * strides[1]];
         }
-        float* new_data = new float[size];
+    }  
+    int new_shape[] = {shape[1], shape[0]};
+    Tensor* result = new Tensor(new_data, new_shape, n_dim, requires_grad);
+    return result;
+}
 
-        for (int i = 0; i < shape[0]; ++i) {
-            for (int j = 0; j < shape[1]; ++j) {
-                new_data[j * shape[0] + i] = data[i * strides[0] + j * strides[1]];
-            }
-        }  
-        int new_shape[] = {shape[1], shape[0]};
+void Tensor::t_() {
+    if (n_dim != 2) {
+        printf("\nNúmero de dimensões deve ser 2 para transpor.");
+    }
+    float* new_data = new float[size];
 
-        memcpy(data, new_data, size * sizeof(float));
-        memcpy(shape, new_shape, n_dim * sizeof(int));
-
-        int stride = 1;
-        for (int i = n_dim - 1; i >= 0; i--) {
-            strides[i] = stride;
-            stride *= shape[i];
+    for (int i = 0; i < shape[0]; ++i) {
+        for (int j = 0; j < shape[1]; ++j) {
+            new_data[j * shape[0] + i] = data[i * strides[0] + j * strides[1]];
         }
-        
+    }  
+    int new_shape[] = {shape[1], shape[0]};
+
+    memcpy(data, new_data, size * sizeof(float));
+    memcpy(shape, new_shape, n_dim * sizeof(int));
+
+    int stride = 1;
+    for (int i = n_dim - 1; i >= 0; i--) {
+        strides[i] = stride;
+        stride *= shape[i];
+    }
+    
+}
+
+
+Tensor* Tensor::abs() {
+    float* new_data = new float[size];
+
+    for (int i = 0; i < size; i++) {
+        if (data[i] < 0) {
+            new_data[i] = -data[i];
+        } else {
+            new_data[i] = data[i];
+        }
     }
 
+    Tensor* t_new = new Tensor(new_data, shape, n_dim);
+    return t_new;
+}
+Tensor* Tensor::sqrt() {
+    float* new_data = new float[size];
 
-    Tensor* Tensor::abs() {
-        float* new_data = new float[size];
-
-        for (int i = 0; i < size; i++) {
-            if (data[i] < 0) {
-                new_data[i] = -data[i];
-            } else {
-                new_data[i] = data[i];
-            }
-        }
-
-        Tensor* t_new = new Tensor(new_data, shape, n_dim);
-        return t_new;
+    for (int i = 0; i < size; i++) {
+        new_data[i] = sqrtf(data[i]);
     }
-    Tensor* Tensor::sqrt() {
-        float* new_data = new float[size];
+    Tensor* t_new = new Tensor(new_data, shape, n_dim);
+    return t_new;
+}
+Tensor* Tensor::tanh() {
+    float* new_data = new float[size];
 
-        for (int i = 0; i < size; i++) {
-            new_data[i] = sqrtf(data[i]);
-        }
-        Tensor* t_new = new Tensor(new_data, shape, n_dim);
-        return t_new;
+    for (int i = 0; i < size; i++) {
+        new_data[i] = tanhf(data[i]);
     }
-    Tensor* Tensor::tanh() {
-        float* new_data = new float[size];
-
-        for (int i = 0; i < size; i++) {
-            new_data[i] = tanhf(data[i]);
-        }
-        Tensor* result = new Tensor(new_data, shape, n_dim, requires_grad);
-        if (requires_grad) {
-            result->grad_fn = new Tanh(this, result);
-        }
-        return result;
+    Tensor* result = new Tensor(new_data, shape, n_dim, requires_grad);
+    if (requires_grad) {
+        result->grad_fn = new Tanh(this, result);
     }
+    return result;
+}
 
-    Tensor* Tensor::mean() {
-        float* new_data = new float[1];
-        new_data[0] = 0.0;
-        for (int i = 0; i < size; i++) {
-            new_data[i] += data[i];
-        }
-        new_data[0] /= size;
-        int* new_shape = new int[1];
-        new_shape[0] = 1;
-
-        Tensor* result = new Tensor(new_data, new_shape, 1, requires_grad);
-        if (requires_grad) {
-            result->grad_fn = new Mean(this);
-        }
-        return result; 
+Tensor* Tensor::mean() {
+    float* new_data = new float[1];
+    new_data[0] = 0.0;
+    for (int i = 0; i < size; i++) {
+        new_data[i] += data[i];
     }
-    Tensor* Tensor::pow(float x) {
-        float* new_data = new float[size];
+    new_data[0] /= size;
+    int* new_shape = new int[1];
+    new_shape[0] = 1;
 
-        for (int i = 0; i < size; i++) {
-            new_data[i] = powf(data[i], x);
-        }
-        Tensor* result = new Tensor(new_data, shape, n_dim, requires_grad);
-        if (requires_grad) {
-            result->grad_fn = new Pow(this, x);
-        }
-        return result;
+    Tensor* result = new Tensor(new_data, new_shape, 1, requires_grad);
+    if (requires_grad) {
+        result->grad_fn = new Mean(this);
     }
-    Tensor* Tensor::sin() {
-        float* new_data = new float[size];
+    return result; 
+}
+Tensor* Tensor::pow(float x) {
+    float* new_data = new float[size];
 
-        for (int i = 0; i < size; i++) {
-            new_data[i] = sinf(data[i]);
-        }
-        Tensor* t_new = new Tensor(new_data, shape, n_dim);
-        return t_new;
+    for (int i = 0; i < size; i++) {
+        new_data[i] = powf(data[i], x);
     }
-    Tensor* Tensor::cos() {
-        float* new_data = new float[size];
-
-        for (int i = 0; i < size; i++) {
-            new_data[i] = cosf(data[i]);
-        }
-        Tensor* t_new = new Tensor(new_data, shape, n_dim);
-        return t_new;
+    Tensor* result = new Tensor(new_data, shape, n_dim, requires_grad);
+    if (requires_grad) {
+        result->grad_fn = new Pow(this, x);
     }
-    Tensor* Tensor::tan() {
-        float* new_data = new float[size];
+    return result;
+}
+Tensor* Tensor::sin() {
+ 
+    float* new_data = new float[size];
 
-        for (int i = 0; i < size; i++) {
-            new_data[i] = tanf(data[i]);
-        }
-        Tensor* t_new = new Tensor(new_data, shape, n_dim);
-        return t_new;
-    }    
-    Tensor* Tensor::softmax() {
-        float* new_data = new float[size];
+    // seno
+    //
+    //
+    //
 
-        // softmax
-        //
-        //
-        //
-        //
+    Tensor* t_new = new Tensor(new_data, shape, n_dim);
+    return t_new;
+}
+Tensor* Tensor::cos() {
+    float* new_data = new float[size];
 
-        Tensor* t_new = new Tensor(new_data, shape, n_dim);
-        return t_new;
-    }     
+    // cosseno
+    //
+    //
+    //
+
+    Tensor* t_new = new Tensor(new_data, shape, n_dim);
+    return t_new;
+}
+Tensor* Tensor::tan() {
+    float* new_data = new float[size];
+
+    // tangente
+    //
+    //
+    //
+
+    Tensor* t_new = new Tensor(new_data, shape, n_dim);
+    return t_new;
+}    
+Tensor* Tensor::softmax() {
+    float* new_data = new float[size];
+
+    // softmax
+    //
+    //
+    //
+    //
+
+    Tensor* t_new = new Tensor(new_data, shape, n_dim);
+    return t_new;
+}     
 
 // ------------------------------------------------------------------------------------------------------------
 // refazer ou apagar
@@ -223,8 +226,10 @@ Tensor* reshape_Tensor(Tensor* t, int* new_shape, int new_n_dim) {
     return t_new;
 }
 
-// broadcast
 
+
+// broadcast
+// tem que refazer isso tudo, n sei fazer direito:
 void Tensor::broadcast(Tensor* other) {
     // 0,3,2
     // 2,3,2

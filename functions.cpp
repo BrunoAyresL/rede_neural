@@ -10,7 +10,7 @@ void NullFunction::backward(Tensor* grad) {
 Add::Add(Tensor* a, Tensor* b) {
     a_ = a;
     b_ = b;
-    printf("\nADD");
+    //printf("\nADD");
 }
 void Add::backward(Tensor* grad) {
     if (a_->requires_grad) {
@@ -19,7 +19,7 @@ void Add::backward(Tensor* grad) {
         }
 
         *a_->grad += grad;
-        a_->grad->print("Add grad a");
+        //a_->grad->print("Add grad a");
         a_->backward(a_->grad); 
     }
     if (b_->requires_grad) {
@@ -27,7 +27,7 @@ void Add::backward(Tensor* grad) {
             b_->grad = create_Tensor_full(0, grad->shape, grad->n_dim);
         }
         *b_->grad += grad;
-        b_->grad->print("Add grad b");
+        //b_->grad->print("Add grad b");
         b_->backward(b_->grad);
     }
 
@@ -37,11 +37,11 @@ void Add::backward(Tensor* grad) {
 Mul::Mul(Tensor* a, Tensor* b) {
     a_ = a;
     b_ = b;
-    printf("\nMUL");
+    //printf("\nMUL");
 }
 
 void Mul::backward(Tensor* grad) {
-        printf("\nMul backward: ");
+        //printf("\nMul backward: ");
     if (a_->requires_grad) {
         if (a_->grad == NULL) {
             a_->grad = create_Tensor_full(0, grad->shape, grad->n_dim);
@@ -62,11 +62,11 @@ void Mul::backward(Tensor* grad) {
 Div::Div(Tensor* a, Tensor* b) {
     a_ = a;
     b_ = b;
-    printf("\nDIV");
+    //printf("\nDIV");
 }
 
 void Div::backward(Tensor* grad) {
-        printf("\nDiv backward: ");
+        //printf("\nDiv backward: ");
     if (a_->requires_grad) {
         if (a_->grad == NULL) {
             a_->grad = create_Tensor_full(0, grad->shape, grad->n_dim);
@@ -86,7 +86,7 @@ void Div::backward(Tensor* grad) {
 Scalar_Mul::Scalar_Mul(Tensor* a, float scalar) {
     a_ = a;
     scalar_ = scalar;
-    printf("\nScalar Multiplication");
+    //printf("\nScalar Multiplication");
 }
 
 void Scalar_Mul::backward(Tensor* grad) {
@@ -96,7 +96,7 @@ void Scalar_Mul::backward(Tensor* grad) {
         }
 
         *a_->grad += (*grad * scalar_);
-        a_->grad->print("Scalar mul grad");
+        //a_->grad->print("Scalar mul grad");
         a_->backward(a_->grad);  
     }
 }
@@ -107,7 +107,7 @@ void Scalar_Mul::backward(Tensor* grad) {
 MatMul::MatMul(Tensor* a, Tensor* b) {
     a_ = a;
     b_ = b;
-    printf("\nMATMUL");
+    //printf("\nMATMUL");
 }
 
 void MatMul::backward(Tensor* grad) {
@@ -116,7 +116,7 @@ void MatMul::backward(Tensor* grad) {
             a_->grad = create_Tensor_full(0, grad->shape, grad->n_dim);
         }
         *a_->grad += (*grad & (b_->t()) );
-        a_->grad->print("Matmul grad a");
+        //a_->grad->print("Matmul grad a");
         a_->backward(a_->grad);  
     }
     if (b_->requires_grad) {
@@ -124,7 +124,7 @@ void MatMul::backward(Tensor* grad) {
             b_->grad = create_Tensor_full(0, grad->shape, grad->n_dim);
         }
         *b_->grad += (*(a_->t()) & grad);
-        b_->grad->print("Matmul grad b");
+        //b_->grad->print("Matmul grad b");
         b_->backward(b_->grad);
     }
 }
@@ -136,7 +136,7 @@ void MatMul::backward(Tensor* grad) {
 Tanh::Tanh(Tensor* a, Tensor* result) {
     a_ = a;
     result_ = result;
-    printf("\nTANH");
+    //printf("\nTANH");
 }
 
 void Tanh::backward(Tensor* grad) {
@@ -146,7 +146,7 @@ void Tanh::backward(Tensor* grad) {
         }
 
         *a_->grad += (*grad * (result_->pow(2)));
-        a_->grad->print("Tanh grad");
+        //a_->grad->print("Tanh grad");
         a_->backward(a_->grad);  
     }
 }
@@ -154,7 +154,7 @@ void Tanh::backward(Tensor* grad) {
 Pow::Pow(Tensor* a, float x) {
     a_ = a;
     x_ = x;
-    printf("\nPOW");
+    //printf("\nPOW");
 }
 
 void Pow::backward(Tensor* grad) {
@@ -164,14 +164,14 @@ void Pow::backward(Tensor* grad) {
         }
 
         *a_->grad += (*grad * (*a_ * x_)->pow(x_ - 1));
-        a_->grad->print("Pow grad");
+        //a_->grad->print("Pow grad");
         a_->backward(a_->grad);  
     }
 }
 
 Mean::Mean(Tensor* a) {
     a_ = a;
-    printf("\nMEAN");
+    //printf("\nMEAN");
 }
 
 void Mean::backward(Tensor* grad) {
@@ -182,7 +182,7 @@ void Mean::backward(Tensor* grad) {
         }
         float x = 1.0 / ((float) a_->size);
         *a_->grad += (*grad * x);
-        a_->grad->print("Mean grad");
+        //a_->grad->print("Mean grad");
         a_->backward(a_->grad);  
     }
 }

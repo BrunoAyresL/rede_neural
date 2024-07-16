@@ -2,6 +2,8 @@
 #include "tensor.cpp"
 #include "functions.cpp"
 
+// tudo aqui é pra teste
+
 int main() {
 
     float a[6] = {0.1,0.5,0.4,0.1,-0.05,-1.0};
