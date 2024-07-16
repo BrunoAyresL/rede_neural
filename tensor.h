@@ -150,6 +150,6 @@ public:
 };
 
 // nome ruim
-Tensor* create_Tensor_full(float x, int* shape, int n_dim);
+Tensor* tensor_fill(float x, int* shape, int n_dim);
 
 #endif

@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include "tensor.h"
 #include <math.h>
-#include <functions.h>
+#include "functions.h"
 
     // operações Tensor x Tensor
     Tensor* Tensor::operator + (Tensor* other)  {
@@ -260,9 +260,7 @@
             data[i] = data[i] - scalar;
         }
     }
-
-
-
+    
     Tensor* Tensor::operator-() {
 
         // tem que derivar isso???????????

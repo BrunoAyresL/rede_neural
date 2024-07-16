@@ -6,7 +6,7 @@
 #include "function.h"
 
 
-Tensor* create_Tensor_full(float x, int* shape, int n_dim) {
+Tensor* tensor_fill(float x, int* shape, int n_dim) {
     int size = 1;
     for (int i = 0; i < n_dim; i++) {
         size *= shape[i];

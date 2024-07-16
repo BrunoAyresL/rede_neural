@@ -15,7 +15,7 @@ Add::Add(Tensor* a, Tensor* b) {
 void Add::backward(Tensor* grad) {
     if (a_->requires_grad) {
         if (a_->grad == NULL) {
-            a_->grad = create_Tensor_full(0, grad->shape, grad->n_dim);
+            a_->grad = tensor_fill(0, grad->shape, grad->n_dim);
         }
 
         *a_->grad += grad;
@@ -24,7 +24,7 @@ void Add::backward(Tensor* grad) {
     }
     if (b_->requires_grad) {
         if (b_->grad == NULL) {
-            b_->grad = create_Tensor_full(0, grad->shape, grad->n_dim);
+            b_->grad = tensor_fill(0, grad->shape, grad->n_dim);
         }
         *b_->grad += grad;
         //b_->grad->print("Add grad b");
@@ -44,7 +44,7 @@ void Mul::backward(Tensor* grad) {
         //printf("\nMul backward: ");
     if (a_->requires_grad) {
         if (a_->grad == NULL) {
-            a_->grad = create_Tensor_full(0, grad->shape, grad->n_dim);
+            a_->grad = tensor_fill(0, grad->shape, grad->n_dim);
         }
 
         *a_->grad += (*grad * b_);
@@ -52,7 +52,7 @@ void Mul::backward(Tensor* grad) {
     }
     if (b_->requires_grad) {
         if (b_->grad == NULL) {
-            b_->grad = create_Tensor_full(0, grad->shape, grad->n_dim);
+            b_->grad = tensor_fill(0, grad->shape, grad->n_dim);
         }
         *b_->grad += (*grad * a_);
         b_->backward(b_->grad);
@@ -69,14 +69,14 @@ void Div::backward(Tensor* grad) {
         //printf("\nDiv backward: ");
     if (a_->requires_grad) {
         if (a_->grad == NULL) {
-            a_->grad = create_Tensor_full(0, grad->shape, grad->n_dim);
+            a_->grad = tensor_fill(0, grad->shape, grad->n_dim);
         }
         *a_->grad += (*grad * (1 / *b_));
         a_->backward(a_->grad);  
     }
     if (b_->requires_grad) {
         if (b_->grad == NULL) {
-            b_->grad = create_Tensor_full(0, grad->shape, grad->n_dim);
+            b_->grad = tensor_fill(0, grad->shape, grad->n_dim);
         }
         *b_->grad += (*grad * (*(-*a_) / b_->pow(2)));
         b_->backward(b_->grad);
@@ -92,7 +92,7 @@ Scalar_Mul::Scalar_Mul(Tensor* a, float scalar) {
 void Scalar_Mul::backward(Tensor* grad) {
     if (a_->requires_grad) {
         if (a_->grad == NULL) {
-            a_->grad = create_Tensor_full(0, grad->shape, grad->n_dim);
+            a_->grad = tensor_fill(0, grad->shape, grad->n_dim);
         }
 
         *a_->grad += (*grad * scalar_);
@@ -113,7 +113,7 @@ MatMul::MatMul(Tensor* a, Tensor* b) {
 void MatMul::backward(Tensor* grad) {
     if (a_->requires_grad) {
         if (a_->grad == NULL) {
-            a_->grad = create_Tensor_full(0, grad->shape, grad->n_dim);
+            a_->grad = tensor_fill(0, grad->shape, grad->n_dim);
         }
         *a_->grad += (*grad & (b_->t()) );
         //a_->grad->print("Matmul grad a");
@@ -121,7 +121,7 @@ void MatMul::backward(Tensor* grad) {
     }
     if (b_->requires_grad) {
         if (b_->grad == NULL) {
-            b_->grad = create_Tensor_full(0, grad->shape, grad->n_dim);
+            b_->grad = tensor_fill(0, grad->shape, grad->n_dim);
         }
         *b_->grad += (*(a_->t()) & grad);
         //b_->grad->print("Matmul grad b");
@@ -142,7 +142,7 @@ Tanh::Tanh(Tensor* a, Tensor* result) {
 void Tanh::backward(Tensor* grad) {
     if (a_->requires_grad) {
         if (a_->grad == NULL) {
-            a_->grad = create_Tensor_full(0, grad->shape, grad->n_dim);
+            a_->grad = tensor_fill(0, grad->shape, grad->n_dim);
         }
 
         *a_->grad += (*grad * (result_->pow(2)));
@@ -160,7 +160,7 @@ Pow::Pow(Tensor* a, float x) {
 void Pow::backward(Tensor* grad) {
     if (a_->requires_grad) {
         if (a_->grad == NULL) {
-            a_->grad = create_Tensor_full(0, grad->shape, grad->n_dim);
+            a_->grad = tensor_fill(0, grad->shape, grad->n_dim);
         }
 
         *a_->grad += (*grad * (*a_ * x_)->pow(x_ - 1));
@@ -178,7 +178,7 @@ void Mean::backward(Tensor* grad) {
 
     if (a_->requires_grad) {
         if (a_->grad == NULL) {
-            a_->grad = create_Tensor_full(0, grad->shape, grad->n_dim);
+            a_->grad = tensor_fill(0, grad->shape, grad->n_dim);
         }
         float x = 1.0 / ((float) a_->size);
         *a_->grad += (*grad * x);
