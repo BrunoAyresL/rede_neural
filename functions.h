@@ -31,6 +31,33 @@ class Mul : public Function {
         Tensor* b_;
 };
 
+class Scalar_Mul : public Function {
+    public:
+        Scalar_Mul(Tensor* a, float scalar);
+        void backward(Tensor* grad) override;
+    private: 
+        Tensor* a_;
+        float scalar_;
+};
+
+class Div : public Function {
+    public:
+        Div(Tensor* a, Tensor* b);
+        void backward(Tensor* grad) override;
+    private: 
+        Tensor* a_;
+        Tensor* b_;
+};
+
+class MatMul : public Function {
+    public:
+        MatMul(Tensor* a, Tensor* b);
+        void backward(Tensor* grad) override;
+    private: 
+        Tensor* a_;
+        Tensor* b_;
+};
+
 class Tanh : public Function {
     public:
         Tanh(Tensor* a, Tensor* result);
@@ -47,6 +74,14 @@ class Pow : public Function {
     private: 
         Tensor* a_;
         float x_;
+};
+
+class Mean : public Function {
+    public:
+        Mean(Tensor* a);
+        void backward(Tensor* grad) override;
+    private: 
+        Tensor* a_;
 };
 
 
