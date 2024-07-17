@@ -49,13 +49,10 @@
             }
         }
 
-        float* new_data = new float[size];
-        for (int i = 0; i < size; i++) {
-            new_data[i] = data[i] - other->data[i];
-        }
-
-        return new Tensor(new_data, shape, n_dim);
+        return *this + -*other; 
     }
+
+
 
     void Tensor::operator += (Tensor* other) {
 
@@ -94,10 +91,10 @@
 
 
         // broadcast (teste)
-        if (n_dim == 1 && other->n_dim > 1) {
+        if ((shape[0] == 1 || shape[1] == 1) && other->n_dim > 1) {
             broadcast(other);
         }
-        if (n_dim > 1 && other->n_dim == 1) {
+        if (n_dim > 1 && (other->shape[0] == 1 || other->shape[1] == 1)) {
             other->broadcast(this);
         }
 
@@ -147,6 +144,16 @@
     }
 
     Tensor* Tensor::operator / (Tensor* other) {
+
+        if ((shape[0] == 1 || shape[1] == 1) && other->n_dim > 1) {
+            broadcast(other);
+        }
+        if (n_dim > 1 && (other->shape[0] == 1 || other->shape[1] == 1)) {
+            other->broadcast(this);
+        }
+
+
+
         if (n_dim != other->n_dim) {
             printf("\nERRO: Divisão de tensores de diferentes dimensões.");
             exit(1);
@@ -196,7 +203,7 @@
                     result_data[i] += other->data[j * other->strides[0] + i] * data[j];
                 }
             }
-
+            
             int result_shape[] = {result_size};
             Tensor* result = new Tensor(result_data, result_shape, 1, other->requires_grad);
             if (requires_grad) {
@@ -224,7 +231,6 @@
                     result_data[i] += data[j * strides[0] + i] * other->data[j];
                 }
             }
-
             int result_shape[] = {result_size};
             Tensor* result = new Tensor(result_data, result_shape, 1, requires_grad);
             if (requires_grad) {
@@ -260,7 +266,6 @@
                 new_data[i * n + j] = sum;
             }
         }
-        
         int new_shape[] = {m, n};
         Tensor* result = new Tensor(new_data, new_shape, n_dim, requires_grad);
         if (requires_grad) {
@@ -325,10 +330,5 @@
 
         // tem que derivar isso???????????
 
-        float* new_data = new float[size];
-        for (int i = 0; i < size; i++) {
-            new_data[i] = -data[i];
-        }
-        Tensor* t_new = new Tensor(new_data, shape, n_dim);
-        return t_new;
+        return (*this * -1);
     }

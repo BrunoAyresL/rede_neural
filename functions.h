@@ -84,5 +84,20 @@ class Mean : public Function {
         Tensor* a_;
 };
 
+class Sum : public Function {
+    public:
+        Sum(Tensor* a);
+        void backward(Tensor* grad) override;
+    private: 
+        Tensor* a_;
+};
+
+class Exp : public Function {
+    public:
+        Exp(Tensor* a);
+        void backward(Tensor* grad) override;
+    private: 
+        Tensor* a_;
+};
 
 #endif

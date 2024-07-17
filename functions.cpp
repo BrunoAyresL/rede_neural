@@ -106,7 +106,7 @@ void MatMul::backward(Tensor* grad) {
             a_->grad = tensor_fill(0, a_->shape, a_->n_dim, false);
         }
         *a_->grad += (*grad & (b_->t()));
-        a_->backward(a_->grad);  
+        a_->backward(a_->grad);
     }
     if (b_->requires_grad) {
         if (b_->grad == NULL) {
@@ -147,7 +147,6 @@ void Pow::backward(Tensor* grad) {
         if (a_->grad == NULL) {
             a_->grad = tensor_fill(0, grad->shape, grad->n_dim, false);
         }
-
         *a_->grad += (*grad * (*a_ * x_)->pow(x_ - 1));
         a_->backward(a_->grad);  
     }
@@ -164,6 +163,35 @@ void Mean::backward(Tensor* grad) {
         }
         float x = 1.0 / ((float) a_->size);
         *a_->grad += (*grad * x);
+        a_->backward(a_->grad);  
+    }
+}
+
+Sum::Sum(Tensor* a) {
+    a_ = a;
+}
+
+void Sum::backward(Tensor* grad) {
+    if (a_->requires_grad) {
+        if (a_->grad == NULL) {
+            a_->grad = tensor_fill(0, grad->shape, grad->n_dim, false);
+        }
+
+        *a_->grad += grad;
+        a_->backward(a_->grad);  
+    }
+}
+
+Exp::Exp(Tensor* a) {
+    a_ = a;
+}
+
+void Exp::backward(Tensor* grad) {
+    if (a_->requires_grad) {
+        if (a_->grad == NULL) {
+            a_->grad = tensor_fill(0, grad->shape, grad->n_dim, false);
+        }
+        *a_->grad += (*grad * a_->exp());
         a_->backward(a_->grad);  
     }
 }

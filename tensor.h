@@ -131,13 +131,49 @@ public:
     Tensor* sqrt();
     Tensor* tanh();
     Tensor* mean();
+    Tensor* sum(int dims);
     Tensor* pow(float x);
+    Tensor* exp();
     Tensor* sin();
     Tensor* cos();
     Tensor* tan();
     Tensor* softmax();
-
+    Tensor* one_hot(int size);
     void print(const char str[]  = " ") {
+
+        // modo compacto
+        if (str[0] == '$') {
+
+             printf("\n%s -> (", str);
+
+            for (int i = 0; i < n_dim; i++) {
+                printf("%d", shape[i]);
+                if (i < n_dim -1) printf(", ");
+            }
+
+            printf("): (");
+
+            for(int i = 0; i < shape[0]; i++) {
+                printf("[");
+                for (int j = 0; j < shape[1]; j++) {
+                    printf("%.3f", data[j + i * strides[0]]);
+                    if (j <  shape[1] - 1) printf(",");
+                }
+                printf("]");
+                if (i < shape[0] - 1) {
+                    printf(",\n");
+                    for (int k = 0; k < 2 * n_dim + strlen(str) + 11; k++) {
+                        printf(" ");
+                    }
+                } else printf(")\n");
+
+            }   
+            return;     
+        }
+
+
+
+
         // tem que possibilitar printar mais de 3 dimensões
         printf("\n%s -> Tensor(", str);
 
@@ -154,7 +190,7 @@ public:
             return;      
         }
 
-        if ((shape[0] > 10 || shape[1] > 10) && str[0] != '$') {
+        if (n_dim > 1 && (shape[0] > 10 || shape[1] > 10)) {
             printf("...)");
             return; 
         }
@@ -164,7 +200,7 @@ public:
                 printf("%f", data[i]);
                 if (i < size - 1) printf(", ");
             }
-            printf("]");
+            printf("])\n");
             return;
         }
 
