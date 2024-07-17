@@ -4,14 +4,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <string>
 #include "functions.h"
+
+#include <iostream>
+#include <cstring>
 
 class Function;
 
 class Tensor {
 public:
     int n_dim;
-    Tensor* grad;
+    
     int size;
     float* data;
     int* strides;
@@ -19,36 +23,52 @@ public:
 
     bool requires_grad;
     Function* grad_fn;
+    Tensor* grad;
+    bool is_scalar;
 
 
     // constructor
     Tensor(float* new_data, int* new_shape, int new_n_dim, bool req_grad=false) {
-
+        is_scalar = false;
         requires_grad = req_grad;
-        grad = NULL;
+        grad = nullptr;
         grad_fn = new NullFunction();
-
         n_dim = new_n_dim;
         size = 1;
         shape = new int[n_dim];
+        if (shape == nullptr) {
+            printf("kkkkkkkkkk");
+            throw std::runtime_error("Error: Failed to allocate memory for tensor shape.");
+        }
         for (int i = 0; i < n_dim; i++) {
             shape[i] = new_shape[i];
             size *= new_shape[i];
         }
+        data = new_data; 
+        if (data == nullptr) {
+            printf("kkkkkkkkkk");
+            throw std::runtime_error("Error: Failed to allocate memory for tensor data.");
+        }
 
-        data = new_data;        
         strides = new int[n_dim];
+        if (strides == nullptr) {
+            printf("kkkkkkkkkk");
+            throw std::runtime_error("Error: Failed to allocate memory for tensor strides.");
+        }
         int stride = 1;
         for (int i = n_dim - 1; i >= 0; i--) {
             strides[i] = stride;
             stride *= shape[i];
-        }               
+        }         
     }
 
     // destructor
     ~Tensor() {
+        printf("\n---------------------------------------------------------------------------------------------");
         delete[] data;
-        delete[] grad;
+        if (grad != nullptr) {
+            delete grad;
+        }
         delete[] strides;
         delete[] shape;
     }
@@ -73,7 +93,6 @@ public:
     friend Tensor* operator / (float scalar, Tensor other) {
 
         // nem sei como esse aqui funcionou, ver depois se tá certo
-
 
         float* new_data = new float[other.size];
         for (int i = 0; i < other.size; i++) {
@@ -118,7 +137,7 @@ public:
     Tensor* tan();
     Tensor* softmax();
 
-    void print(char* str = " ") {
+    void print(const char str[]  = " ") {
         // tem que possibilitar printar mais de 3 dimensões
         printf("\n%s -> Tensor(", str);
 
@@ -127,8 +146,19 @@ public:
             if (i < n_dim -1) printf(", ");
         }
 
-        printf("): [");
+        printf("): (");
         
+        if (is_scalar) {
+            printf("%f", data[0]);
+            printf("]");
+            return;      
+        }
+
+        if ((shape[0] > 10 || shape[1] > 10) && str[0] != '$') {
+            printf("...)");
+            return; 
+        }
+
         if (n_dim == 1) {
             for (int i = 0; i < size; i++) {
                 printf("%f", data[i]);
@@ -138,12 +168,21 @@ public:
             return;
         }
 
+        for(int i = 0; i < shape[0]; i++) {
+            printf("[");
+            for (int j = 0; j < shape[1]; j++) {
+                printf("%10f", data[j + i * strides[0]]);
+                if (j <  shape[1] - 1) printf(", ");
+            }
+            printf("]");
+            if (i < shape[0] - 1) {
+                printf(",\n");
+                for (int k = 0; k < 2 * n_dim + strlen(str) + 15; k++) {
+                    printf(" ");
+                }
+            } else printf(")\n");
 
-        for(int i = 0; i < shape[0] * shape[1]; i++) {
-            printf("%f", data[i]);
-            if (i < shape[0] * shape[1] - 1) printf(", ");
         }
-        printf("]");
     }
     
 

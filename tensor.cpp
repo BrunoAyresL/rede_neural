@@ -4,19 +4,40 @@
 #include <math.h>
 #include "tensor.h"
 #include "function.h"
+#include <random>
 
 
-Tensor* tensor_fill(float x, int* shape, int n_dim) {
+Tensor* tensor_rand(int* shape, int n_dim, bool req_grad = false) {
     int size = 1;
     for (int i = 0; i < n_dim; i++) {
         size *= shape[i];
     }
+    float* data = new float[size];
 
+    // random
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<> distrib(0.0, 0.1);
+
+    for (int i = 0; i < size; i++) {
+        data[i] = (float) distrib(gen);
+    }
+    Tensor* t = new Tensor(data, shape, n_dim, req_grad);
+    return t;
+}
+
+
+
+Tensor* tensor_fill(float x, int* shape, int n_dim, bool req_grad = false) {
+    int size = 1;
+    for (int i = 0; i < n_dim; i++) {
+        size *= shape[i];
+    }
     float* data = new float[size];
     for (int i = 0; i < size; i++) {
         data[i] = x;
     }
-    Tensor* t = new Tensor(data, shape, n_dim, false);
+    Tensor* t = new Tensor(data, shape, n_dim, req_grad);
     return t;
 }
 
@@ -40,7 +61,6 @@ Tensor* Tensor::t() {
         printf("\nNúmero de dimensões deve ser 2 para transpor.");
     }
     float* new_data = new float[size];
-
     for (int i = 0; i < shape[0]; ++i) {
         for (int j = 0; j < shape[1]; ++j) {
             new_data[j * shape[0] + i] = data[i * strides[0] + j * strides[1]];
@@ -113,16 +133,19 @@ Tensor* Tensor::tanh() {
 }
 
 Tensor* Tensor::mean() {
-    float* new_data = new float[1];
-    new_data[0] = 0.0;
+    float mean = 0.0;
     for (int i = 0; i < size; i++) {
-        new_data[i] += data[i];
+        mean += data[i];
     }
-    new_data[0] /= size;
-    int* new_shape = new int[1];
-    new_shape[0] = 1;
+    mean /= (float)size;
 
-    Tensor* result = new Tensor(new_data, new_shape, 1, requires_grad);
+    float* new_data = new float[size];
+    for (int i = 0; i < size; i++) {
+        new_data[i] = mean;
+    }
+
+    Tensor* result = new Tensor(new_data, shape, n_dim, requires_grad);
+    result->is_scalar = true;
     if (requires_grad) {
         result->grad_fn = new Mean(this);
     }
@@ -229,24 +252,29 @@ Tensor* reshape_Tensor(Tensor* t, int* new_shape, int new_n_dim) {
 
 
 // broadcast
-// tem que refazer isso tudo, n sei fazer direito:
+// faltam casos de +2 dimensões
 void Tensor::broadcast(Tensor* other) {
     // 0,3,2
     // 2,3,2
-
-    // caso base (1)
-
     if (n_dim == 1) {
+
         size = other->size;
         n_dim = other->n_dim;
         memcpy(strides, other->strides, n_dim * sizeof(int));
         memcpy(shape, other->shape, n_dim * sizeof(int));
-        for (int i = 1; i < other->size; i++) {
-            data[i] = data[0];
+
+        float* new_data = new float[size];
+        for (int i = 0; i < shape[0]; i++) {
+            for (int j = 0; j < shape[1]; j++) {
+
+                int dest = j + i * strides[0];
+                new_data[dest] = data[j];
+            }
         }
+        data = new_data;
         return;
     }
-
+    // remover?
     for (int i = 0; i < n_dim; i++) {
         if (shape[i] != other->shape[i] && shape[i] != 1 && other->shape[i] != 1) {
             printf("\nImpossível transmitir Tensor.");

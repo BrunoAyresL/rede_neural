@@ -171,24 +171,86 @@
 
     Tensor* Tensor::operator & (Tensor* other) {
         // verificação (tem que melhorar isso)
-        if (n_dim != other->n_dim) {
-            printf("\nERRO: Produto de tensores de diferentes dimensões.");
-            exit(1);
-        } 
-        if (shape[0] != other->shape[1]) {
-            this->t_();
-            printf("\nERRO: Produto de tensores de formatos diferentes. (%d - %d)", shape[0], other->shape[1]);
-            this->print("THIS");
-            other->print("OTHER");
+
+        if (n_dim == 1 && other->n_dim == 1) {
+            // vetor x vetor
+            return (*this * other);
         }
 
-        float* new_data = new float[size];
+        if (n_dim == 1 && other->n_dim > 1) {
+            // new dim - shape x,1
+            if (shape[0] != other->shape[1]) {
+                printf("\nERRO: Produto de matriz e vetor incompatível.");
+                printf("\n1 dim, 2 dim");
+                printf("\n(%d) x (%d, %d)", shape[0], other->shape[0], other->shape[1]);
+                exit(1);
+            }
+
+            int result_size = other->shape[0];
+            float* result_data = new float[result_size];
+
+            // matriz x vetor
+            for (int i = 0; i < result_size; i++) {
+                result_data[i] = 0.0;
+                for (int j = 0; j < other->shape[1]; j++) {
+                    result_data[i] += other->data[j * other->strides[0] + i] * data[j];
+                }
+            }
+
+            int result_shape[] = {result_size};
+            Tensor* result = new Tensor(result_data, result_shape, 1, other->requires_grad);
+            if (requires_grad) {
+                result->grad_fn = new MatMul(this, other);
+            }
+            return result;
+        }
+
+
+        if (n_dim > 1 && other->n_dim == 1) {
+
+            if (other->shape[0] != shape[1]) {
+                printf("\nERRO: Produto de matriz e vetor incompatível.");
+                printf("\n2 dim, 1 dim");
+                exit(1);
+            }
+
+            int result_size = shape[0];
+            float* result_data = new float[result_size];
+
+            // matriz x vetor
+            for (int i = 0; i < result_size; i++) {
+                result_data[i] = 0.0;
+                for (int j = 0; j < shape[1]; j++) {
+                    result_data[i] += data[j * strides[0] + i] * other->data[j];
+                }
+            }
+
+            int result_shape[] = {result_size};
+            Tensor* result = new Tensor(result_data, result_shape, 1, requires_grad);
+            if (requires_grad) {
+                result->grad_fn = new MatMul(this, other);
+            }
+            return result;
+        }
+
+        if (shape[1] != other->shape[0]) {
+            printf("\nERRO: Produto de tensores de formatos diferentes. (%d - %d)", shape[1], other->shape[0]);
+            //this->t_();
+            this->print("THIS");
+            other->print("OTHER");
+            exit(1);
+        }
+        // X            W         A
+        // (32,64) x (64,27) = (32,27)
+        // (a,p) x (p,b) = (a,b) 
         // assumir 2 dims
 
         int m = shape[0];
         int n = other->shape[1];
         int p = shape[1];
-        
+    
+        float* new_data = new float[m * n];
+
         for (int i = 0; i < m; i++) {
             for (int j = 0; j < n; j++) {
                 float  sum = 0.0;
@@ -199,13 +261,11 @@
             }
         }
         
-        printf("\n%d %d %d", m, n, p);
-        int new_shape[] = {n, p};
+        int new_shape[] = {m, n};
         Tensor* result = new Tensor(new_data, new_shape, n_dim, requires_grad);
         if (requires_grad) {
             result->grad_fn = new MatMul(this, other);
         }
-        
         return result;
     }
 
