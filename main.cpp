@@ -69,7 +69,6 @@ int main() {
     ys->print("ys");
     Tensor* yenc = ys->one_hot(27);   
     //yenc->print("$yenc");
-
     int w_shape[2] = {27, 27};
     Tensor* W = tensor_rand(w_shape, 2, true);
     Tensor* logits = (*xenc & W);
