@@ -64,7 +64,8 @@ public:
 
     // destructor
     ~Tensor() {
-        printf("\n---------------------------------------------------------------------------------------------");
+        printf("\ndeleting tensor... (%d, %d)", shape[1], shape[0]);
+        print("$Deleted ");
         delete[] data;
         if (grad != nullptr) {
             delete grad;
@@ -87,7 +88,7 @@ public:
     void operator += (float scalar);
     void operator -= (float scalar);
     Tensor* operator-();
-
+    Tensor* index(float* x, float* y, int l);
 
 
     friend Tensor* operator / (float scalar, Tensor other) {
@@ -134,6 +135,7 @@ public:
     Tensor* sum(int dims);
     Tensor* pow(float x);
     Tensor* exp();
+    Tensor* log();
     Tensor* sin();
     Tensor* cos();
     Tensor* tan();

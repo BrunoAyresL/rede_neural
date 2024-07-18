@@ -100,4 +100,23 @@ class Exp : public Function {
         Tensor* a_;
 };
 
+class Log : public Function {
+    public:
+        Log(Tensor* a);
+        void backward(Tensor* grad) override;
+    private: 
+        Tensor* a_;
+};
+
+class Indexing : public Function {
+    public:
+        Indexing(Tensor* a, int* pos, int l);
+        void backward(Tensor* grad) override;
+    private: 
+        Tensor* a_;
+        int* pos_;
+        int l_;
+};
+
+
 #endif

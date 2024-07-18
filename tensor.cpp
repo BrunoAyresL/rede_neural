@@ -170,7 +170,7 @@ Tensor* Tensor::sum(int dims = 0) {
         if (requires_grad) {
             result->grad_fn = new Sum(this);
         }
-         return result; 
+        return result; 
     }
 
     float sum = 0.0;
@@ -213,6 +213,19 @@ Tensor* Tensor::exp() {
     Tensor* result = new Tensor(new_data, shape, n_dim, requires_grad);
     if (requires_grad) {
         result->grad_fn = new Exp(this);
+    }
+    return result;
+}
+
+Tensor* Tensor::log() {
+    float* new_data = new float[size];
+
+    for (int i = 0; i < size; i++) {
+        new_data[i] = logf(data[i]);
+    }
+    Tensor* result = new Tensor(new_data, shape, n_dim, requires_grad);
+    if (requires_grad) {
+        result->grad_fn = new Log(this);
     }
     return result;
 }
@@ -318,7 +331,7 @@ Tensor* Tensor::one_hot(int length) {
             
         }
     }
-    Tensor* result = new Tensor(new_data, new_shape, 2, requires_grad);
+    Tensor* result = new Tensor(new_data, new_shape, 2, true);
     return result;
 
 }

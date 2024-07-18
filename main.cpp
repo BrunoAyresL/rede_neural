@@ -74,18 +74,16 @@ int main() {
     Tensor* logits = (*xenc & W);
     // SOFTMAX:
     Tensor* counts = logits->exp();
-    Tensor* probs = *counts / counts->sum(1);
+    Tensor* counts_sum = counts->sum(1);
+    Tensor* probs = *counts / counts_sum;
     probs->print("$probs");
-
-
-
-
-
-
-
-
-
-
+    // loss = - probs[{0,1,2,4,5}][ys].log().mean()
+    float rg[6] = {0,1,2,3,4,5};
+    Tensor* loss = (-*(probs->index(rg, ys->data, 6)->log()))->mean();
+    loss->print("loss");
+    loss->backward();
+    printf("\ndone");
+    W->grad->print("$W->grad");
 
     /*
     int w_shape[2] = {64,27};

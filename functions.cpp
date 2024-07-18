@@ -57,9 +57,19 @@ void Mul::backward(Tensor* grad) {
 Div::Div(Tensor* a, Tensor* b) {
     a_ = a;
     b_ = b;
+    
 }
 
 void Div::backward(Tensor* grad) {
+
+     if (b_->requires_grad) {
+        if (b_->grad == NULL) {
+            b_->grad = tensor_fill(0, grad->shape, grad->n_dim, false);
+        }
+        *b_->grad += (*grad * (*(-*a_) / b_->pow(2)));
+        b_->backward(b_->grad); 
+    }
+
     if (a_->requires_grad) {
         if (a_->grad == NULL) {
             a_->grad = tensor_fill(0, grad->shape, grad->n_dim, false);
@@ -67,13 +77,7 @@ void Div::backward(Tensor* grad) {
         *a_->grad += (*grad * (1 / *b_));
         a_->backward(a_->grad);  
     }
-    if (b_->requires_grad) {
-        if (b_->grad == NULL) {
-            b_->grad = tensor_fill(0, grad->shape, grad->n_dim, false);
-        }
-        *b_->grad += (*grad * (*(-*a_) / b_->pow(2)));
-        b_->backward(b_->grad);
-    }
+
 }
 
 Scalar_Mul::Scalar_Mul(Tensor* a, float scalar) {
@@ -195,3 +199,41 @@ void Exp::backward(Tensor* grad) {
         a_->backward(a_->grad);  
     }
 }
+
+Log::Log(Tensor* a) {
+    a_ = a;
+    
+}
+
+void Log::backward(Tensor* grad) {
+    if (a_->requires_grad) {
+        if (a_->grad == NULL) {
+            a_->grad = tensor_fill(0, grad->shape, grad->n_dim, false);
+        }
+
+        *a_->grad += (*grad / a_);
+        a_->backward(a_->grad);  
+    }
+}
+
+
+Indexing::Indexing(Tensor* a, int* pos, int l) {
+    a_ = a;
+    pos_ = pos;
+    l_ = l;
+ 
+}
+
+void Indexing::backward(Tensor* grad) {
+    if (a_->requires_grad) {
+        if (a_->grad == NULL) {
+            a_->grad = tensor_fill(0, grad->shape, grad->n_dim, false);
+        }
+
+        for (int i = 0; i < l_; i++) {
+            a_->grad->data[pos_[i]] += grad->data[i];
+        }
+        a_->backward(a_->grad);  
+    }
+}
+
