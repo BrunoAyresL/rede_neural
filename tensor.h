@@ -27,7 +27,9 @@ public:
     Function* grad_fn;
     Tensor* grad;
     bool is_scalar;
+    std::string op;
 
+    Tensor* origin;
 
     // constructor
     Tensor(float* new_data, int* new_shape, int new_n_dim, bool req_grad=false) {
@@ -38,8 +40,11 @@ public:
             TensorRegistry::add(this);
         }
 
+        origin = nullptr;
         grad = nullptr;
         grad_fn = new NullFunction();
+        op.assign("NULL");
+
         n_dim = new_n_dim;
         size = 1;
         shape = new int[n_dim];
@@ -113,7 +118,9 @@ public:
                     new_data[i] = 1.0;
                 }
                 grad_output = new Tensor(new_data, shape, n_dim, false);
+                grad = new Tensor(new_data, shape, n_dim, false);
             }
+
             if (grad == NULL) {
                 float* new_data = new float[size];
                 for (int i = 0; i < size; i++) {
@@ -121,22 +128,22 @@ public:
                 }
                 grad = new Tensor(new_data, shape, n_dim, false);
             }
-            //printf("\ngrad_output: size=%d, n_dim=%d, shape[0]=%d", grad_output->size, grad_output->n_dim, grad_output->shape[0]);
-            //grad_output->print("first grad_output");
+
+
             grad_fn->backward(grad_output);
         }
     }
 
 
     void expand(int* new_shape);
-    void broadcast(Tensor* other);
+    Tensor* broadcast(Tensor* other);
     Tensor* t();
     void t_();
     Tensor* abs();
     Tensor* sqrt();
     Tensor* tanh();
     Tensor* mean();
-    Tensor* sum(int dims);
+    Tensor* sum(int dim);
     Tensor* pow(float x);
     Tensor* exp();
     Tensor* log();
@@ -144,13 +151,17 @@ public:
     Tensor* cos();
     Tensor* tan();
     Tensor* softmax();
+    Tensor* max(int dim);
     Tensor* one_hot(int size);
+    
     void print(const char str[]  = " ") {
 
         // modo compacto
         if (str[0] == '$' && n_dim > 1) {
 
-             printf("\n%s -> (", str);
+            printf("\n%s -> ", str);
+            std::cout << op << "";
+            printf("(");
 
             for (int i = 0; i < n_dim; i++) {
                 printf("%d", shape[i]);
@@ -162,13 +173,24 @@ public:
             for(int i = 0; i < shape[0]; i++) {
                 printf("[");
                 for (int j = 0; j < shape[1]; j++) {
-                    printf("%.1f", data[j + i * strides[0]]);
+
+                    // remover isso dps
+                    if (data[j + i * strides[0]] == 0.00000) {
+                        printf("0");
+                    } else {
+                        printf("%.1f", data[j + i * strides[0]]);
+                    }
+                    
+
+
+
+
                     if (j <  shape[1] - 1) printf(",");
                 }
                 printf("]");
                 if (i < shape[0] - 1) {
                     printf(",\n");
-                    for (int k = 0; k < 2 * n_dim + strlen(str) + 11; k++) {
+                    for (int k = 0; k < 2 * n_dim + strlen(str) + 11 + op.length(); k++) {
                         printf(" ");
                     }
                 } else printf(")\n");
@@ -181,14 +203,17 @@ public:
 
 
         // tem que possibilitar printar mais de 3 dimensões
-        printf("\n%s -> Tensor(", str);
+        printf("\n%s -> ", str);
+        std::cout << op << "";
+        printf("(");
 
         for (int i = 0; i < n_dim; i++) {
             printf("%d", shape[i]);
             if (i < n_dim -1) printf(", ");
         }
 
-        printf("): (");
+        printf("): ([");
+        
         
         if (is_scalar) {
             printf("%f", data[0]);
@@ -213,7 +238,7 @@ public:
             printf("]");
             if (i < shape[0] - 1) {
                 printf(",\n");
-                for (int k = 0; k < 2 * n_dim + strlen(str) + 15; k++) {
+                for (int k = 0; k < 2 * n_dim + strlen(str) + 15 + op.length(); k++) {
                     printf(" ");
                 }
             } else printf(")\n");

@@ -24,6 +24,7 @@ Tensor* tensor_rand(int* shape, int n_dim, bool req_grad = false) {
         data[i] = (float) distrib(gen);
     }
     Tensor* t = new Tensor(data, shape, n_dim, req_grad);
+    t->op = "Rand";
     return t;
 }
 
@@ -39,6 +40,8 @@ Tensor* tensor_fill(float x, int* shape, int n_dim, bool req_grad = false) {
         data[i] = x;
     }
     Tensor* t = new Tensor(data, shape, n_dim, req_grad);
+    if (req_grad) t->op = "Fill";
+    else t->op = "Grad";
     return t;
 }
 
@@ -69,6 +72,7 @@ Tensor* Tensor::t() {
     }  
     int new_shape[] = {shape[1], shape[0]};
     Tensor* result = new Tensor(new_data, new_shape, n_dim, requires_grad);
+    result->op = "Transpose";
     return result;
 }
 
@@ -128,6 +132,7 @@ Tensor* Tensor::tanh() {
     }
     Tensor* result = new Tensor(new_data, shape, n_dim, requires_grad);
     if (requires_grad) {
+        result->op = "Tanh";
         result->grad_fn = new Tanh(this, result);
     }
     return result;
@@ -148,13 +153,14 @@ Tensor* Tensor::mean() {
     Tensor* result = new Tensor(new_data, shape, n_dim, requires_grad);
     result->is_scalar = true;
     if (requires_grad) {
+        result->op = "Mean";
         result->grad_fn = new Mean(this);
     }
     return result; 
 }
 
-Tensor* Tensor::sum(int dims = 0) {
-    if (dims == 1) {
+Tensor* Tensor::sum(int dim = 0) {
+    if (dim == 1) {
 
         float* new_data = new float[shape[0]];
 
@@ -168,10 +174,11 @@ Tensor* Tensor::sum(int dims = 0) {
         int new_shape[2] = {shape[0], 1};
 
         Tensor* result = new Tensor(new_data, new_shape, 2, requires_grad);
-        result->is_scalar = true;
         if (requires_grad) {
-            result->grad_fn = new Sum(this);
+            result->op = "Sum1";
+            result->grad_fn = new Sum(this, dim);
         }
+        
         return result; 
     }
 
@@ -188,7 +195,8 @@ Tensor* Tensor::sum(int dims = 0) {
     Tensor* result = new Tensor(new_data, shape, n_dim, requires_grad);
     result->is_scalar = true;
     if (requires_grad) {
-        result->grad_fn = new Sum(this);
+        result->op = "Sum0";
+        result->grad_fn = new Sum(this, dim);
     }
     return result; 
 }
@@ -201,6 +209,7 @@ Tensor* Tensor::pow(float x) {
     }
     Tensor* result = new Tensor(new_data, shape, n_dim, requires_grad);
     if (requires_grad) {
+        result->op = "Pow";
         result->grad_fn = new Pow(this, x);
     }
     return result;
@@ -214,6 +223,7 @@ Tensor* Tensor::exp() {
     }
     Tensor* result = new Tensor(new_data, shape, n_dim, requires_grad);
     if (requires_grad) {
+        result->op = "Exp";
         result->grad_fn = new Exp(this);
     }
     return result;
@@ -227,6 +237,7 @@ Tensor* Tensor::log() {
     }
     Tensor* result = new Tensor(new_data, shape, n_dim, requires_grad);
     if (requires_grad) {
+        result->op = "Log";
         result->grad_fn = new Log(this);
     }
     return result;
@@ -320,6 +331,60 @@ Tensor* reshape_Tensor(Tensor* t, int* new_shape, int new_n_dim) {
 
 // onehot -> 5 -> [0,0,0,0,0,1]
 
+Tensor* Tensor::max(int dim = 0) {
+        if (dim == 1) {
+
+        float* new_data = new float[shape[0]];
+        int* pos = new int[shape[0]];
+        for (int i = 0; i < shape[0]; i++) {
+            int max_i = 0;
+            for (int j = 0; j < shape[1]; j++) {
+                int idx = j + i * strides[0];
+                if (data[max_i] < data[idx]) {
+                    max_i = idx;
+                }
+            }
+            new_data[i] = data[max_i];
+            pos[i] = max_i;
+        }
+        
+        int new_shape[2] = {shape[0], 1};
+
+        Tensor* result = new Tensor(new_data, new_shape, 2, requires_grad);
+        if (requires_grad) {
+            result->op = "Max1";
+            result->grad_fn = new Max(this, dim, pos);
+        }
+        
+        return result; 
+    }
+
+    int max_i = 0;
+    for (int i = 0; i < size; i++) {
+        if (data[max_i] < data[i]) {
+            max_i = i;
+        }
+    }
+
+    float* new_data = new float[size];
+    int* pos = new int[1];
+    pos[0] = max_i;
+    for (int i = 0; i < size; i++) {
+        new_data[i] = data[max_i];
+    }
+
+    Tensor* result = new Tensor(new_data, shape, n_dim, requires_grad);
+    result->is_scalar = true;
+    if (requires_grad) {
+        result->op = "Max0";
+        result->grad_fn = new Max(this, dim, pos);
+    }
+    return result; 
+}
+
+
+
+
 Tensor* Tensor::one_hot(int length) {
     if (n_dim > 1) {
         printf("\nOne Hot impossível.");
@@ -334,6 +399,7 @@ Tensor* Tensor::one_hot(int length) {
         }
     }
     Tensor* result = new Tensor(new_data, new_shape, 2, true);
+    result->op = "Onehot";
     return result;
 
 }
@@ -341,54 +407,41 @@ Tensor* Tensor::one_hot(int length) {
 
 // broadcast
 // faltam casos de +2 dimensões
-void Tensor::broadcast(Tensor* other) {
+Tensor* Tensor::broadcast(Tensor* other) {
     // 0,3,2
     // 2,3,2
+    if (grad != nullptr) {
+        printf("\n\n BROADCAST WITH TENSOR THAT HAS GRAD");
+    }
+
     if (n_dim == 1) {
+        float* new_data = new float[other->size];
+        for (int i = 0; i < other->shape[0]; i++) {
+            for (int j = 0; j <other->shape[1]; j++) {
 
-        size = other->size;
-        n_dim = other->n_dim;
-        memcpy(strides, other->strides, n_dim * sizeof(int));
-        memcpy(shape, other->shape, n_dim * sizeof(int));
-
-        float* new_data = new float[size];
-        for (int i = 0; i < shape[0]; i++) {
-            for (int j = 0; j < shape[1]; j++) {
-
-                int dest = j + i * strides[0];
+                int dest = j + i * other->strides[0];
                 new_data[dest] = data[j];
             }
         }
-        data = new_data;
-        return;
+
+        Tensor* result = new Tensor(new_data, other->shape, other->n_dim, requires_grad);
+        result->origin = this;
+        return result;
     }
 
     if (n_dim == 2) {
-        // problema aqui??
-        size = other->size;
-        n_dim = other->n_dim;
-        memcpy(strides, other->strides, n_dim * sizeof(int));
-        memcpy(shape, other->shape, n_dim * sizeof(int));
 
-        float* new_data = new float[size];
-        for (int i = 0; i < shape[0]; i++) {
-            for (int j = 0; j < shape[1]; j++) {
+        float* new_data = new float[other->size];
+        for (int i = 0; i < other->shape[0]; i++) {
+            for (int j = 0; j < other->shape[1]; j++) {
 
-                int dest = j + i * strides[0];
+                int dest = j + i * other->strides[0];
                 new_data[dest] = data[i];
             }
         }
-        data = new_data;
-        return;
-    }
-
-
-
-    // remover?
-    for (int i = 0; i < n_dim; i++) {
-        if (shape[i] != other->shape[i] && shape[i] != 1 && other->shape[i] != 1) {
-            printf("\nImpossível transmitir Tensor.");
-        } 
+        Tensor* result = new Tensor(new_data, other->shape, other->n_dim, requires_grad);
+        result->origin = this;
+        return result;
     }
 
 }

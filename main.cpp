@@ -55,7 +55,7 @@ int main() {
         int n_lines = 10000;
         std::string str = fileLine(words, n_lines);
         //int batch_size = str.size() / 100;
-        int batch_size = str.size() / 500;
+        int batch_size = 100;
 
         float* data_xs = new float[batch_size];
         float* data_ys = new float[batch_size];
@@ -76,60 +76,91 @@ int main() {
             range[i] = (float) i;
         }
 
-        printf("\nnumero de elementos: %d", j);
+        printf("\nnumero de exemplos: %d", j);
 
         Tensor* xs = new Tensor(data_xs, xs_shape, 1, true);
         Tensor* ys = new Tensor(data_ys, xs_shape, 1, true);
         int w_shape[2] = {27, 27};
-        Tensor* W = tensor_fill(1.0, w_shape, 2, true);
+        Tensor* W = tensor_rand(w_shape, 2, true);
+
+        float learning_rate = 0.01;
 
         Tensor* xenc = xs->one_hot(27);   
-        
+
         Tensor* logits = (*xenc & W);
-        Tensor* counts = logits->exp();
+        Tensor* logits_maxes = logits->max(1);
+        Tensor* norm_logits = *logits - logits_maxes; 
+        // softmax
+        Tensor* counts = norm_logits->exp();
         Tensor* counts_sum = counts->sum(1);
         Tensor* probs = *counts / counts_sum;
-
-        Tensor* loss = -*((probs->index(range, ys->data, j)->log()))->mean();
+        Tensor* logprobs = probs->log();
+        // cross-entropy
+        Tensor* loss = -*( logprobs->index(range, ys->data, j) )->mean();
+        // zero-grad
+        TensorRegistry::zero_grad();
         loss->backward();
         printf("\nloss -> %f", loss->data[0]);
-        *W += *W->grad * (-0.2);
 
-        for (int i = 0 ; i < 5; i++) {
-            xenc = xs->one_hot(27);
+        for (int i = 0 ; i < 40; i++) {
             logits = (*xenc & W);
-            counts = logits->exp();
+            logits_maxes = logits->max(1);
+            norm_logits = *logits - logits_maxes;
+        // softmax
+            counts = norm_logits->exp();
             counts_sum = counts->sum(1);
             probs = *counts / counts_sum;
-            loss =-*((probs->index(range, ys->data, j)->log()))->mean();
-
+            logprobs = probs->log();
+            // cross-entropy
+            loss = -*( logprobs->index(range, ys->data, j) )->mean();
+            // zero-grad
             TensorRegistry::zero_grad();
-
-            loss->backward();  
+            loss->backward();
             printf("\nloss -> %f", loss->data[0]);
-            *W += *W->grad * (-1);
+            
+            // gradient descent
+            *W += *W->grad * (-learning_rate);
+
+
+            if (i % 10 == 0) {
+                //W->grad->print("$W.grad");
+                //printf("\nloss -> %f", loss->data[0]);
+                //W->mean()->print("mean");
+                //probs->index(range, ys->data, j)->print("$predicts");
+            }
         }
-    W->print("$W");
-    W->grad->print("W grad");
-    probs->index(range, ys->data, j)->print("idx");
-    //logits->print("$logits");
-    //logits->grad->print("$logits");
 
-    //for (int i = 0; i < 100; i++) {
-    //    printf("\n%c\t%c", itol((int)xs->data[i]), itol((int)ys->data[i]));
-    //}
-    int k = 0;
-    for (int i = 0; i < W->size; i++) {
-        if (W->grad->data[i] >= 0.001 || W->grad->data[i] < -0.001) {
-            k++;
-        }
-    }
-    printf("W: %d  non-zero = %d", W->size, k);
+            //counts->print("Counts");
+            //counts_sum->print("Counts Sum");
+            //counts->grad->print("Counts GRAD");
+            //counts_sum->grad->print("Counts Sum GRAD");
+            //logits->print("Logits");
+            //logits->grad->print("Logits");
+            W->print("W");
+            W->grad->print("W");
+            /*
+            W->print("W");
+            logits->print("Logits");
+            logits_maxes->print("Logits Maxes");
+            norm_logits->print("Norm Logits");
+            counts->print("Counts");
+            counts_sum->print("Counts Sum");
+            counts_sum_inv->print("Counts Sum Inv");
+            probs->print("Probs");
+            logprobs->print("Log Probs");
+            loss->print("Loss");
 
-
-    //ys->print("$ys");
-    //W->print("$W");
-    //W->grad->print("$W grad");
+            W->grad->print("W GRAD");
+            logits->grad->print("Logits GRAD");
+            logits_maxes->grad->print("Logits Maxes GRAD");
+            norm_logits->grad->print("Norm Logits GRAD");
+            counts->grad->print("Counts GRAD");
+            counts_sum->grad->print("Counts Sum GRAD");
+            counts_sum_inv->grad->print("Counts Sum Inv GRAD");
+            probs->grad->print("Probs GRAD");
+            logprobs->grad->print("Log Probs GRAD");
+            loss->grad->print("Loss GRAD");
+             */
 
 
 

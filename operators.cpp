@@ -10,114 +10,87 @@
 
 
         // broadcast (teste, refazer depois)
-        if (n_dim == 1 && other->n_dim > 1) {
-            broadcast(other);
-        }
-        if (n_dim > 1 && other->n_dim == 1) {
-            other->broadcast(this);
-        }
+        Tensor* other_ = other;
+        Tensor* this_ = this;
+        if ((shape[0] == 1 || shape[1] == 1 || n_dim == 1) && other->n_dim > 1) {
+            this_ = broadcast(other);
+            
+        } 
+        if (n_dim > 1 && (other->shape[0] == 1 || other->shape[1] == 1 || other->n_dim == 1)) {
+            other_ = other->broadcast(this);
+        } 
 
-        for (int i = 0; i < n_dim; i++) {
-            if (shape[i] != other->shape[i]) {
+        for (int i = 0; i < this_->n_dim; i++) {
+            if (this_->shape[i] != other_->shape[i]) {
                 printf("\nERRO: Soma de tensores de formatos diferentes.");
                 exit(1);
             }
         }
 
-        float* new_data = new float[size];
-        for (int i = 0; i < size; i++) {
-            new_data[i] = data[i] + other->data[i];
+        float* new_data = new float[this_->size];
+        for (int i = 0; i < this_->size; i++) {
+            new_data[i] = this_->data[i] + other_->data[i];
         }
 
-        Tensor* result = new Tensor(new_data, shape, n_dim, requires_grad);
+        Tensor* result = new Tensor(new_data, this_->shape, this_->n_dim, requires_grad);
         if (requires_grad) {
+            result->op = "Add";
             result->grad_fn = new Add(this, other);
         }
         return result;
     }
 
     Tensor* Tensor::operator - (Tensor* other)  {
-        // verificação
-        if (n_dim != other->n_dim) {
-            printf("\nERRO: Subtração de tensores de diferentes dimensões.");
-            exit(1);
-        } 
-        for (int i = 0; i < n_dim; i++) {
-            if (shape[i] != other->shape[i]) {
-                printf("\nERRO: Subtração de tensores de formatos diferentes.");
-                exit(1);
-            }
-        }
-
         return *this + -*other; 
     }
 
 
 
     void Tensor::operator += (Tensor* other) {
+        Tensor* other_ = other;
+        Tensor* this_ = this;
 
-        // nao ta completo !!!!!!!
-
-        // verificação
-
-
-        // broadcast (teste)
-        if (n_dim == 1 && other->n_dim > 1) {
-            broadcast(other);
-        }
-        if (n_dim > 1 && other->n_dim == 1) {
-            other->broadcast(this);
+        if (n_dim > 1 && (other->shape[0] == 1 || other->shape[1] == 1 || other->n_dim == 1)) {
+            other_ = other->broadcast(this);
         }
 
+        for (int i = 0; i < this_->n_dim; i++) {
+            if (this_->shape[i] != other_->shape[i]) {
+                printf("\nERRO: Soma (+=) de tensores de formatos diferentes.");
 
-        if (n_dim != other->n_dim) {
-            printf("\nERRO: Soma de tensores de diferentes dimensões.");
-            exit(1);
-        } 
-        for (int i = 0; i < n_dim; i++) {
-            if (shape[i] != other->shape[i]) {
-                printf("\nERRO: Soma de tensores de formatos diferentes.");
                 exit(1);
             }
         }
 
-        for (int i = 0; i < size; i++) {
-            data[i] += other->data[i];
+        for (int i = 0; i < this_->size; i++) {
+            this_->data[i] += other_->data[i];
         }
     }
 
     Tensor* Tensor::operator * (Tensor* other) {
-        // verificação
-
-
-        // broadcast (teste)
+        Tensor* other_ = other;
+        Tensor* this_ = this;
         if ((shape[0] == 1 || shape[1] == 1 || n_dim == 1) && other->n_dim > 1) {
-            broadcast(other);
-        }
-        if (n_dim > 1 && (other->shape[0] == 1 || other->shape[1] == 1 || other->n_dim == 1)) {
-            other->broadcast(this);
-        }
-
-        if (n_dim != other->n_dim) {
-            printf("\nERRO: Multiplicação escalar de tensores de diferentes dimensões.\nTENSOR 1:");
-            this->print();
-            printf("\nTENSOR 2:");
-            other->print();
-            exit(1);
+            this_ = broadcast(other);  
         } 
-        for (int i = 0; i < n_dim; i++) {
-            if (shape[i] != other->shape[i]) {
-                printf("\nERRO: Multiplicação escalar de tensores de formatos diferentes. (%d - %d)", shape[i], other->shape[i]);
+        if (n_dim > 1 && (other->shape[0] == 1 || other->shape[1] == 1 || other->n_dim == 1)) {
+            other_ = other->broadcast(this);
+        } 
+
+        for (int i = 0; i < this_->n_dim; i++) {
+            if (this_->shape[i] != other_->shape[i]) {
+                printf("\nERRO: Multiplicação escalar de tensores de formatos diferentes. (%d - %d)", this_->shape[i], other_->shape[i]);
                 exit(1);
             }
         }
 
-        float* new_data = new float[size];
-        for (int i = 0; i < size; i++) {
-            new_data[i] = data[i] * other->data[i];
+        float* new_data = new float[this_->size];
+        for (int i = 0; i < this_->size; i++) {
+            new_data[i] = this_->data[i] * other_->data[i];
         }
-        Tensor* result = new Tensor(new_data, shape, n_dim, requires_grad);
+        Tensor* result = new Tensor(new_data, this_->shape, this_->n_dim, requires_grad);
         if (requires_grad) {
+            result->op = "Mul";
             result->grad_fn = new Mul(this, other);
         }
         return result;
@@ -145,36 +118,31 @@
 
     Tensor* Tensor::operator / (Tensor* other) {
 
+        Tensor* other_ = other;
+        Tensor* this_ = this;
         if ((shape[0] == 1 || shape[1] == 1 || n_dim == 1) && other->n_dim > 1) {
-            broadcast(other);
-        }
-        if (n_dim > 1 && (other->shape[0] == 1 || other->shape[1] == 1 || other->n_dim == 1)) {
-            other->broadcast(this);
-        }
-
-
-
-        if (n_dim != other->n_dim) {
-            printf("\nERRO: Divisão de tensores de diferentes dimensões.");
-            this->print("$Div 1");
-            other->print("$Div 2");
-            exit(1);
+            this_ = broadcast(other);  
         } 
-        for (int i = 0; i < n_dim; i++) {
-            if (shape[i] != other->shape[i]) {
+        if (n_dim > 1 && (other->shape[0] == 1 || other->shape[1] == 1 || other->n_dim == 1)) {
+            other_ = other->broadcast(this);
+        }
+
+        for (int i = 0; i < this_->n_dim; i++) {
+            if (this_->shape[i] != other_->shape[i]) {
                 printf("\nERRO: Divisão de tensores de formatos diferentes.");
-                this->print("Div 1");
-                other->print("Div 2");
+                this_->print("Div 1");
+                other_->print("Div 2");
                 exit(1);
             }
         }
 
-        float* new_data = new float[size];
-        for (int i = 0; i < size; i++) {
-            new_data[i] = data[i] / other->data[i];
+        float* new_data = new float[this_->size];
+        for (int i = 0; i < this_->size; i++) {
+            new_data[i] = this_->data[i] / other_->data[i];
         }
-        Tensor* result = new Tensor(new_data, shape, n_dim, requires_grad);
+        Tensor* result = new Tensor(new_data, this_->shape, this_->n_dim, requires_grad);
         if (requires_grad) {
+            result->op = "Div";
             result->grad_fn = new Div(this, other);
         }
         return result;            
@@ -211,6 +179,7 @@
             int result_shape[] = {result_size};
             Tensor* result = new Tensor(result_data, result_shape, 1, other->requires_grad);
             if (requires_grad) {
+                result->op = "Matmul1";
                 result->grad_fn = new MatMul(this, other);
             }
             return result;
@@ -238,6 +207,7 @@
             int result_shape[] = {result_size};
             Tensor* result = new Tensor(result_data, result_shape, 1, requires_grad);
             if (requires_grad) {
+                result->op = "Matmul2";
                 result->grad_fn = new MatMul(this, other);
             }
             return result;
@@ -273,6 +243,7 @@
         int new_shape[] = {m, n};
         Tensor* result = new Tensor(new_data, new_shape, n_dim, requires_grad);
         if (requires_grad) {
+            result->op = "Matmul3";
             result->grad_fn = new MatMul(this, other);
         }
         return result;
@@ -304,6 +275,7 @@
         }
         Tensor* result = new Tensor(new_data, shape, n_dim, requires_grad);
         if (requires_grad) {
+            result->op = "ScalarMul";
             result->grad_fn = new Scalar_Mul(this, scalar);
         }
         return result;
@@ -364,6 +336,7 @@
         int new_shape[1] = {l};
         Tensor* result = new Tensor(new_data, new_shape, 1, requires_grad);
         if (requires_grad) {
+            result->op = "Indexing";
             result->grad_fn = new Indexing(this, pos, l);
         }
         return result;

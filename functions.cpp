@@ -14,7 +14,7 @@ Add::Add(Tensor* a, Tensor* b) {
 void Add::backward(Tensor* grad) {
     if (a_->requires_grad) {
         if (a_->grad == NULL) {
-            a_->grad = tensor_fill(0, grad->shape, grad->n_dim, false);
+            a_->grad = tensor_fill(0, a_->shape, a_->n_dim, false);
         }
 
         *a_->grad += grad;
@@ -22,9 +22,14 @@ void Add::backward(Tensor* grad) {
     }
     if (b_->requires_grad) {
         if (b_->grad == NULL) {
-            b_->grad = tensor_fill(0, grad->shape, grad->n_dim, false);
+            b_->grad = tensor_fill(0, b_->shape, b_->n_dim, false);
         }
-        *b_->grad += grad;
+
+        if (b_->grad->shape[0] != a_->shape[0] || b_->grad->shape[1] != a_->shape[1]) {
+            *b_->grad += grad->sum(1);
+        } else {
+            *b_->grad += grad;
+        }
         b_->backward(b_->grad);
     }
 }
@@ -39,7 +44,7 @@ void Mul::backward(Tensor* grad) {
 
     if (a_->requires_grad) {
         if (a_->grad == NULL) {
-            a_->grad = tensor_fill(0, grad->shape, grad->n_dim, false);
+            a_->grad = tensor_fill(0, a_->shape, a_->n_dim, false);
         }
 
         *a_->grad += (*grad * b_);
@@ -47,7 +52,7 @@ void Mul::backward(Tensor* grad) {
     }
     if (b_->requires_grad) {
         if (b_->grad == NULL) {
-            b_->grad = tensor_fill(0, grad->shape, grad->n_dim, false);
+            b_->grad = tensor_fill(0, b_->shape, b_->n_dim, false);
         }
         *b_->grad += (*grad * a_);
         b_->backward(b_->grad);
@@ -64,25 +69,26 @@ Div::Div(Tensor* a, Tensor* b) {
 void Div::backward(Tensor* grad) {
     if (a_->requires_grad) {
         if (a_->grad == NULL) {
-            a_->grad = tensor_fill(0, grad->shape, grad->n_dim, false);
+            a_->grad = tensor_fill(0, a_->shape, a_->n_dim, false);
         }
-        //b_->print("$b_ div ------ ");
-        *a_->grad += (*grad * (b_->scalar_div(1)));
-        //a_->grad->print("$ div a_ grad");
-        //b_->print("$b_ div");
+        *a_->grad += (*grad / b_);
+
         a_->backward(a_->grad);  
     }
 
     if (b_->requires_grad) {
         if (b_->grad == NULL) {
-            b_->grad = tensor_fill(0, grad->shape, grad->n_dim, false);
+            b_->grad = tensor_fill(0, b_->shape, b_->n_dim, false);
+        }   
+
+        if (b_->grad->shape[0] != a_->shape[0] || b_->grad->shape[1] != a_->shape[1]) {
+            *b_->grad += (*grad * -*(*(a_) / b_->pow(2)))->sum(1);
+        } else {
+            *b_->grad += (*grad * -*(*(a_) / b_->pow(2)));
         }
 
-        //grad->print("$div grad");
-        //a_->print("$a_ div");
-        //b_->print("$b_ div");
-        *b_->grad += (*grad * (*(-*a_) / b_->pow(2)));
-        //b_->grad->print("$ div b_ grad");
+
+        
         b_->backward(b_->grad); 
     }
 
@@ -165,7 +171,7 @@ void Pow::backward(Tensor* grad) {
         if (a_->grad == NULL) {
             a_->grad = tensor_fill(0, grad->shape, grad->n_dim, false);
         }
-        *a_->grad += (*grad * (*a_ * x_)->pow(x_ - 1));
+        *a_->grad += (*grad * (*(a_)->pow(x_ - 1) * x_));
         a_->backward(a_->grad);  
     }
 }
@@ -187,20 +193,23 @@ void Mean::backward(Tensor* grad) {
     }
 }
 
-Sum::Sum(Tensor* a) {
+Sum::Sum(Tensor* a, int dim) {
     a_ = a;
+    dim_ = dim;
+
 }
 
 void Sum::backward(Tensor* grad) {
-    //printf("\nSum - backward: ");
-    //a_->print("$sum a_");
+
     if (a_->requires_grad) {
         if (a_->grad == NULL) {
             a_->grad = tensor_fill(0, grad->shape, grad->n_dim, false);
         }
-        //grad->print("$sum grad");
-        *a_->grad += grad;
-        //a_->grad->print("$a_ grad");
+        if (dim_ == 1) {
+            *a_->grad += grad->sum(1);
+        } else {
+            *a_->grad += grad->sum(0);
+        }
         a_->backward(a_->grad);  
     }
 }
@@ -261,7 +270,32 @@ void Indexing::backward(Tensor* grad) {
             //printf("\ndata[%d] += %f", pos_[i], grad->data[i]);
         }
         //a_->grad->print("$indexing a_ grad");
-        printf("\n\npos_ size: %d", l_);
+        a_->backward(a_->grad);  
+    }
+}
+
+Max::Max(Tensor* a, int dim, int* pos) {
+    a_ = a;
+    dim_ = dim;
+    pos_ = pos;
+}
+
+void Max::backward(Tensor* grad) {
+
+    if (a_->requires_grad) {
+        if (a_->grad == NULL) {
+            a_->grad = tensor_fill(0, a_->shape, a_->n_dim, false);
+        }
+        if (dim_ == 0) {
+            a_->grad->data[pos_[0]] = a_->data[0];
+        } else {
+
+            for (int i = 0; i < a_->shape[0]; i++) {
+                a_->grad->data[pos_[i]] += a_->data[i];
+            }
+        }
+
+
         a_->backward(a_->grad);  
     }
 }

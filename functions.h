@@ -86,10 +86,11 @@ class Mean : public Function {
 
 class Sum : public Function {
     public:
-        Sum(Tensor* a);
+        Sum(Tensor* a, int dim);
         void backward(Tensor* grad) override;
     private: 
         Tensor* a_;
+        int dim_;
 };
 
 class Exp : public Function {
@@ -118,5 +119,14 @@ class Indexing : public Function {
         int l_;
 };
 
+class Max : public Function {
+    public:
+        Max(Tensor* a, int dim, int* pos);
+        void backward(Tensor* grad) override;
+    private: 
+        Tensor* a_;
+        int* pos_;
+        int dim_;
+};
 
 #endif
