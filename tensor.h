@@ -7,6 +7,8 @@
 #include <string>
 #include "functions.h"
 
+#include "registry.h"
+
 #include <iostream>
 #include <cstring>
 
@@ -31,6 +33,11 @@ public:
     Tensor(float* new_data, int* new_shape, int new_n_dim, bool req_grad=false) {
         is_scalar = false;
         requires_grad = req_grad;
+
+        if (req_grad) {
+            TensorRegistry::add(this);
+        }
+
         grad = nullptr;
         grad_fn = new NullFunction();
         n_dim = new_n_dim;
@@ -64,8 +71,7 @@ public:
 
     // destructor
     ~Tensor() {
-        printf("\ndeleting tensor... (%d, %d)", shape[1], shape[0]);
-        print("$Deleted ");
+        //print("$Deleted ");
         delete[] data;
         if (grad != nullptr) {
             delete grad;
@@ -73,6 +79,12 @@ public:
         delete[] strides;
         delete[] shape;
     }
+
+    void zero_grad() {
+        delete grad;
+        grad = nullptr;
+    }
+
 
     Tensor* operator + (Tensor* other);
     Tensor* operator - (Tensor* other);
@@ -87,21 +99,11 @@ public:
     void operator *= (float scalar);
     void operator += (float scalar);
     void operator -= (float scalar);
+
+    Tensor* scalar_div (float scalar);
+
     Tensor* operator-();
     Tensor* index(float* x, float* y, int l);
-
-
-    friend Tensor* operator / (float scalar, Tensor other) {
-
-        // nem sei como esse aqui funcionou, ver depois se tá certo
-
-        float* new_data = new float[other.size];
-        for (int i = 0; i < other.size; i++) {
-            new_data[i] = scalar / other.data[i];
-        }
-        Tensor* t_new = new Tensor(new_data, other.shape, other.n_dim);
-        return t_new;
-    }
 
     void backward(Tensor* grad_output = NULL) {
         if (requires_grad) {
@@ -119,6 +121,8 @@ public:
                 }
                 grad = new Tensor(new_data, shape, n_dim, false);
             }
+            //printf("\ngrad_output: size=%d, n_dim=%d, shape[0]=%d", grad_output->size, grad_output->n_dim, grad_output->shape[0]);
+            //grad_output->print("first grad_output");
             grad_fn->backward(grad_output);
         }
     }
@@ -144,7 +148,7 @@ public:
     void print(const char str[]  = " ") {
 
         // modo compacto
-        if (str[0] == '$') {
+        if (str[0] == '$' && n_dim > 1) {
 
              printf("\n%s -> (", str);
 
@@ -158,7 +162,7 @@ public:
             for(int i = 0; i < shape[0]; i++) {
                 printf("[");
                 for (int j = 0; j < shape[1]; j++) {
-                    printf("%.3f", data[j + i * strides[0]]);
+                    printf("%.1f", data[j + i * strides[0]]);
                     if (j <  shape[1] - 1) printf(",");
                 }
                 printf("]");
@@ -191,12 +195,6 @@ public:
             printf("]");
             return;      
         }
-
-        if (n_dim > 1 && (shape[0] > 10 || shape[1] > 10)) {
-            printf("...)");
-            return; 
-        }
-
         if (n_dim == 1) {
             for (int i = 0; i < size; i++) {
                 printf("%f", data[i]);

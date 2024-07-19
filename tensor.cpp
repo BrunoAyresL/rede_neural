@@ -17,7 +17,8 @@ Tensor* tensor_rand(int* shape, int n_dim, bool req_grad = false) {
     // random
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::normal_distribution<> distrib(-1.0, 1.0);
+    //std::normal_distribution<> distrib(-1.0, 1.0);
+    std::uniform_real_distribution<> distrib(0.0, 1.0);
 
     for (int i = 0; i < size; i++) {
         data[i] = (float) distrib(gen);
@@ -156,6 +157,7 @@ Tensor* Tensor::sum(int dims = 0) {
     if (dims == 1) {
 
         float* new_data = new float[shape[0]];
+
         for (int i = 0; i < shape[0]; i++) {
             float sum = 0.0;
             for (int j = 0; j < shape[1]; j++) {
@@ -362,7 +364,7 @@ void Tensor::broadcast(Tensor* other) {
     }
 
     if (n_dim == 2) {
-
+        // problema aqui??
         size = other->size;
         n_dim = other->n_dim;
         memcpy(strides, other->strides, n_dim * sizeof(int));

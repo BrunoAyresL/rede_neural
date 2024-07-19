@@ -146,11 +146,9 @@
     Tensor* Tensor::operator / (Tensor* other) {
 
         if ((shape[0] == 1 || shape[1] == 1 || n_dim == 1) && other->n_dim > 1) {
-            printf("\nbroadcast 1");
             broadcast(other);
         }
         if (n_dim > 1 && (other->shape[0] == 1 || other->shape[1] == 1 || other->n_dim == 1)) {
-            printf("\nbroadcast 2");
             other->broadcast(this);
         }
 
@@ -265,7 +263,7 @@
 
         for (int i = 0; i < m; i++) {
             for (int j = 0; j < n; j++) {
-                float  sum = 0.0;
+                float sum = 0.0;
                 for (int k = 0; k < p; k++) {
                     sum += data[i * strides[0] + k] * other->data[k * other->strides[0] + j * other->strides[1]];
                 }
@@ -332,6 +330,19 @@
         }
     }
     
+    Tensor* Tensor::scalar_div (float scalar) {
+
+        // nem sei como esse aqui funcionou, ver depois se tá certo
+
+        float* new_data = new float[size];
+        for (int i = 0; i < size; i++) {
+            new_data[i] = scalar / data[i];
+        }
+        Tensor* result = new Tensor(new_data, shape, n_dim, requires_grad);
+        return result;
+    }
+
+
     Tensor* Tensor::operator-() {
 
         // tem que derivar isso???????????
@@ -345,14 +356,13 @@
         float* new_data = new float[l];
         for (int i = 0; i < l; i++) {
             int idx = (int) (y[i] + (int) x[i] * strides[0]); 
-            printf("\n (%d, %d) >>> %d -   %f", (int)x[i], (int)y[i],idx, data[idx]);
+            //printf("\n (%d, %d) >>> %d -   %f", (int)x[i], (int)y[i],idx, data[idx]);
             new_data[i] = data[idx];
             pos[i] = idx;
         }
 
         int new_shape[1] = {l};
         Tensor* result = new Tensor(new_data, new_shape, 1, requires_grad);
-        printf("\n\n");
         if (requires_grad) {
             result->grad_fn = new Indexing(this, pos, l);
         }

@@ -54,6 +54,7 @@ void Mul::backward(Tensor* grad) {
     }
 }
 
+
 Div::Div(Tensor* a, Tensor* b) {
     a_ = a;
     b_ = b;
@@ -61,24 +62,34 @@ Div::Div(Tensor* a, Tensor* b) {
 }
 
 void Div::backward(Tensor* grad) {
-
-     if (b_->requires_grad) {
-        if (b_->grad == NULL) {
-            b_->grad = tensor_fill(0, grad->shape, grad->n_dim, false);
-        }
-        *b_->grad += (*grad * (*(-*a_) / b_->pow(2)));
-        b_->backward(b_->grad); 
-    }
-
     if (a_->requires_grad) {
         if (a_->grad == NULL) {
             a_->grad = tensor_fill(0, grad->shape, grad->n_dim, false);
         }
-        *a_->grad += (*grad * (1 / *b_));
+        //b_->print("$b_ div ------ ");
+        *a_->grad += (*grad * (b_->scalar_div(1)));
+        //a_->grad->print("$ div a_ grad");
+        //b_->print("$b_ div");
         a_->backward(a_->grad);  
     }
 
+    if (b_->requires_grad) {
+        if (b_->grad == NULL) {
+            b_->grad = tensor_fill(0, grad->shape, grad->n_dim, false);
+        }
+
+        //grad->print("$div grad");
+        //a_->print("$a_ div");
+        //b_->print("$b_ div");
+        *b_->grad += (*grad * (*(-*a_) / b_->pow(2)));
+        //b_->grad->print("$ div b_ grad");
+        b_->backward(b_->grad); 
+    }
+
 }
+
+
+
 
 Scalar_Mul::Scalar_Mul(Tensor* a, float scalar) {
     a_ = a;
@@ -105,11 +116,13 @@ MatMul::MatMul(Tensor* a, Tensor* b) {
 }
 
 void MatMul::backward(Tensor* grad) {
+    //grad->print("$Matmul grad");
     if (a_->requires_grad) {
         if (a_->grad == NULL) {
             a_->grad = tensor_fill(0, a_->shape, a_->n_dim, false);
         }
         *a_->grad += (*grad & (b_->t()));
+        //a_->grad->print("$Matmul a_ grad");
         a_->backward(a_->grad);
     }
     if (b_->requires_grad) {
@@ -117,6 +130,7 @@ void MatMul::backward(Tensor* grad) {
             b_->grad = tensor_fill(0, b_->shape, b_->n_dim, false);
         }
         *b_->grad += (*(a_->t()) & grad);
+        //b_->grad->print("$Matmul b_ grad");
         b_->backward(b_->grad);
     }
 }
@@ -161,12 +175,14 @@ Mean::Mean(Tensor* a) {
 }
 
 void Mean::backward(Tensor* grad) {
+    //grad->print("$mean grad");
     if (a_->requires_grad) {
         if (a_->grad == NULL) {
             a_->grad = tensor_fill(0, grad->shape, grad->n_dim, false);
         }
         float x = 1.0 / ((float) a_->size);
         *a_->grad += (*grad * x);
+        //a_->grad->print("$mean a_ grad");
         a_->backward(a_->grad);  
     }
 }
@@ -176,12 +192,15 @@ Sum::Sum(Tensor* a) {
 }
 
 void Sum::backward(Tensor* grad) {
+    //printf("\nSum - backward: ");
+    //a_->print("$sum a_");
     if (a_->requires_grad) {
         if (a_->grad == NULL) {
             a_->grad = tensor_fill(0, grad->shape, grad->n_dim, false);
         }
-
+        //grad->print("$sum grad");
         *a_->grad += grad;
+        //a_->grad->print("$a_ grad");
         a_->backward(a_->grad);  
     }
 }
@@ -195,7 +214,9 @@ void Exp::backward(Tensor* grad) {
         if (a_->grad == NULL) {
             a_->grad = tensor_fill(0, grad->shape, grad->n_dim, false);
         }
+        //grad->print("$grad exp");
         *a_->grad += (*grad * a_->exp());
+        //a_->grad->print("$a_ grad exp");
         a_->backward(a_->grad);  
     }
 }
@@ -206,12 +227,14 @@ Log::Log(Tensor* a) {
 }
 
 void Log::backward(Tensor* grad) {
+    //grad->print("$log grad");
     if (a_->requires_grad) {
         if (a_->grad == NULL) {
             a_->grad = tensor_fill(0, grad->shape, grad->n_dim, false);
         }
 
         *a_->grad += (*grad / a_);
+        //a_->grad->print("$log a_ grad");
         a_->backward(a_->grad);  
     }
 }
@@ -225,14 +248,20 @@ Indexing::Indexing(Tensor* a, int* pos, int l) {
 }
 
 void Indexing::backward(Tensor* grad) {
+    //a_->print("$a_ of indexing");
+    //grad->print("$indexing grad");
     if (a_->requires_grad) {
         if (a_->grad == NULL) {
-            a_->grad = tensor_fill(0, grad->shape, grad->n_dim, false);
+            a_->grad = tensor_fill(0, a_->shape, a_->n_dim, false);
         }
-
+        //a_->print("a_");
+        //grad->print("grad");
         for (int i = 0; i < l_; i++) {
             a_->grad->data[pos_[i]] += grad->data[i];
+            //printf("\ndata[%d] += %f", pos_[i], grad->data[i]);
         }
+        //a_->grad->print("$indexing a_ grad");
+        printf("\n\npos_ size: %d", l_);
         a_->backward(a_->grad);  
     }
 }
