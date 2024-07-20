@@ -108,32 +108,8 @@ public:
     Tensor* scalar_div (float scalar);
 
     Tensor* operator-();
-    Tensor* index(float* x, float* y, int l);
 
-    void backward(Tensor* grad_output = NULL) {
-        if (requires_grad) {
-            if (grad_output == NULL) {
-                float* new_data = new float[size];
-                for (int i = 0; i < size; i++) {
-                    new_data[i] = 1.0;
-                }
-                grad_output = new Tensor(new_data, shape, n_dim, false);
-                grad = new Tensor(new_data, shape, n_dim, false);
-            }
-
-            if (grad == NULL) {
-                float* new_data = new float[size];
-                for (int i = 0; i < size; i++) {
-                    new_data[i] = 0.0;
-                }
-                grad = new Tensor(new_data, shape, n_dim, false);
-            }
-
-
-            grad_fn->backward(grad_output);
-        }
-    }
-
+    void backward(Tensor* grad_output);
 
     void expand(int* new_shape);
     Tensor* broadcast(Tensor* other);
@@ -153,6 +129,7 @@ public:
     Tensor* softmax();
     Tensor* max(int dim);
     Tensor* one_hot(int size);
+    Tensor* index(Tensor* X, Tensor* Y);
     
     void print(const char str[]  = " ") {
 
@@ -212,15 +189,16 @@ public:
             if (i < n_dim -1) printf(", ");
         }
 
-        printf("): ([");
+        printf("): (");
         
         
         if (is_scalar) {
-            printf("%f", data[0]);
+            printf("[%f", data[0]);
             printf("]");
             return;      
         }
         if (n_dim == 1) {
+            printf("[");
             for (int i = 0; i < size; i++) {
                 printf("%f", data[i]);
                 if (i < size - 1) printf(", ");
@@ -232,13 +210,13 @@ public:
         for(int i = 0; i < shape[0]; i++) {
             printf("[");
             for (int j = 0; j < shape[1]; j++) {
-                printf("%10f", data[j + i * strides[0]]);
+                printf("%9f", data[j + i * strides[0]]);
                 if (j <  shape[1] - 1) printf(", ");
             }
             printf("]");
             if (i < shape[0] - 1) {
                 printf(",\n");
-                for (int k = 0; k < 2 * n_dim + strlen(str) + 15 + op.length(); k++) {
+                for (int k = 0; k < 2 * n_dim + strlen(str) + 9 + op.length(); k++) {
                     printf(" ");
                 }
             } else printf(")\n");
@@ -250,6 +228,6 @@ public:
 };
 
 // nome ruim
-Tensor* tensor_fill(float x, int* shape, int n_dim);
+Tensor* tensor_fill(float x, int* shape, int n_dim, bool req_grad);
 
 #endif

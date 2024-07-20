@@ -6,23 +6,16 @@
 
     // operações Tensor x Tensor
     Tensor* Tensor::operator + (Tensor* other)  {
-        // verificação
 
-
-        // broadcast (teste, refazer depois)
         Tensor* other_ = other;
         Tensor* this_ = this;
-        if ((shape[0] == 1 || shape[1] == 1 || n_dim == 1) && other->n_dim > 1) {
-            this_ = broadcast(other);
-            
-        } 
-        if (n_dim > 1 && (other->shape[0] == 1 || other->shape[1] == 1 || other->n_dim == 1)) {
-            other_ = other->broadcast(this);
-        } 
+        this_ = handle_broadcast(this, other);
+        other_ = handle_broadcast(other, this_);
 
         for (int i = 0; i < this_->n_dim; i++) {
             if (this_->shape[i] != other_->shape[i]) {
                 printf("\nERRO: Soma de tensores de formatos diferentes.");
+                printf("\n>> %d, >> %d", this_->shape[i], other_->shape[i]);
                 exit(1);
             }
         }
@@ -35,7 +28,7 @@
         Tensor* result = new Tensor(new_data, this_->shape, this_->n_dim, requires_grad);
         if (requires_grad) {
             result->op = "Add";
-            result->grad_fn = new Add(this, other);
+            result->grad_fn = new Add(this_, other_);
         }
         return result;
     }
@@ -47,12 +40,11 @@
 
 
     void Tensor::operator += (Tensor* other) {
+
         Tensor* other_ = other;
         Tensor* this_ = this;
-
-        if (n_dim > 1 && (other->shape[0] == 1 || other->shape[1] == 1 || other->n_dim == 1)) {
-            other_ = other->broadcast(this);
-        }
+        this_ = handle_broadcast(this, other);
+        other_ = handle_broadcast(other, this_);
 
         for (int i = 0; i < this_->n_dim; i++) {
             if (this_->shape[i] != other_->shape[i]) {
@@ -68,14 +60,11 @@
     }
 
     Tensor* Tensor::operator * (Tensor* other) {
+
         Tensor* other_ = other;
         Tensor* this_ = this;
-        if ((shape[0] == 1 || shape[1] == 1 || n_dim == 1) && other->n_dim > 1) {
-            this_ = broadcast(other);  
-        } 
-        if (n_dim > 1 && (other->shape[0] == 1 || other->shape[1] == 1 || other->n_dim == 1)) {
-            other_ = other->broadcast(this);
-        } 
+        this_ = handle_broadcast(this, other);
+        other_ = handle_broadcast(other, this_);
 
         for (int i = 0; i < this_->n_dim; i++) {
             if (this_->shape[i] != other_->shape[i]) {
@@ -91,7 +80,7 @@
         Tensor* result = new Tensor(new_data, this_->shape, this_->n_dim, requires_grad);
         if (requires_grad) {
             result->op = "Mul";
-            result->grad_fn = new Mul(this, other);
+            result->grad_fn = new Mul(this_, other_);
         }
         return result;
     }
@@ -320,24 +309,4 @@
         // tem que derivar isso???????????
 
         return (*this * -1);
-    }
-
-
-    Tensor* Tensor::index(float* x, float* y, int l){
-        int* pos = new int[l];
-        float* new_data = new float[l];
-        for (int i = 0; i < l; i++) {
-            int idx = (int) (y[i] + (int) x[i] * strides[0]); 
-            //printf("\n (%d, %d) >>> %d -   %f", (int)x[i], (int)y[i],idx, data[idx]);
-            new_data[i] = data[idx];
-            pos[i] = idx;
-        }
-
-        int new_shape[1] = {l};
-        Tensor* result = new Tensor(new_data, new_shape, 1, requires_grad);
-        if (requires_grad) {
-            result->op = "Indexing";
-            result->grad_fn = new Indexing(this, pos, l);
-        }
-        return result;
     }

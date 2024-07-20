@@ -86,19 +86,21 @@ class Mean : public Function {
 
 class Sum : public Function {
     public:
-        Sum(Tensor* a, int dim);
+        Sum(Tensor* a, Tensor* one, int dim);
         void backward(Tensor* grad) override;
     private: 
         Tensor* a_;
+        Tensor* one_;
         int dim_;
 };
 
 class Exp : public Function {
     public:
-        Exp(Tensor* a);
+        Exp(Tensor* a, Tensor* result);
         void backward(Tensor* grad) override;
     private: 
         Tensor* a_;
+        Tensor* result_;
 };
 
 class Log : public Function {
@@ -111,12 +113,12 @@ class Log : public Function {
 
 class Indexing : public Function {
     public:
-        Indexing(Tensor* a, int* pos, int l);
+        Indexing(Tensor* a, Tensor* X, Tensor* Y);
         void backward(Tensor* grad) override;
     private: 
         Tensor* a_;
-        int* pos_;
-        int l_;
+        Tensor* X_;
+        Tensor* Y_;
 };
 
 class Max : public Function {
@@ -127,6 +129,23 @@ class Max : public Function {
         Tensor* a_;
         int* pos_;
         int dim_;
+};
+
+class Transpose : public Function {
+    public:
+        Transpose(Tensor* a);
+        void backward(Tensor* grad) override;
+    private: 
+        Tensor* a_;
+};
+
+class Broadcast: public Function {
+    public:
+        Broadcast(Tensor* a, Tensor* one);
+        void backward(Tensor* grad) override;
+    private: 
+        Tensor* a_;
+        Tensor* one_;
 };
 
 #endif

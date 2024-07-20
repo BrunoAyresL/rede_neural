@@ -26,6 +26,7 @@ void Add::backward(Tensor* grad) {
         }
 
         if (b_->grad->shape[0] != a_->shape[0] || b_->grad->shape[1] != a_->shape[1]) {
+            printf("\nssss");
             *b_->grad += grad->sum(1);
         } else {
             *b_->grad += grad;
@@ -193,39 +194,39 @@ void Mean::backward(Tensor* grad) {
     }
 }
 
-Sum::Sum(Tensor* a, int dim) {
+Sum::Sum(Tensor* a, Tensor* one, int dim) {
     a_ = a;
+    one_ = one;
     dim_ = dim;
-
 }
 
 void Sum::backward(Tensor* grad) {
 
     if (a_->requires_grad) {
         if (a_->grad == NULL) {
-            a_->grad = tensor_fill(0, grad->shape, grad->n_dim, false);
+            a_->grad = tensor_fill(0, a_->shape, a_->n_dim, false);
         }
         if (dim_ == 1) {
-            *a_->grad += grad->sum(1);
-        } else {
-            *a_->grad += grad->sum(0);
+            *a_->grad += *grad & one_->t();
+        } else if (dim_ == 0) {
+            *a_->grad += *one_ * grad;
         }
         a_->backward(a_->grad);  
     }
 }
 
-Exp::Exp(Tensor* a) {
+Exp::Exp(Tensor* a, Tensor* result) {
     a_ = a;
+    result_ = result;
 }
 
 void Exp::backward(Tensor* grad) {
     if (a_->requires_grad) {
         if (a_->grad == NULL) {
-            a_->grad = tensor_fill(0, grad->shape, grad->n_dim, false);
+            a_->grad = tensor_fill(0, a_->shape, a_->n_dim, false);
         }
-        //grad->print("$grad exp");
-        *a_->grad += (*grad * a_->exp());
-        //a_->grad->print("$a_ grad exp");
+
+        *a_->grad += (*grad * result_);
         a_->backward(a_->grad);  
     }
 }
@@ -236,40 +237,34 @@ Log::Log(Tensor* a) {
 }
 
 void Log::backward(Tensor* grad) {
-    //grad->print("$log grad");
     if (a_->requires_grad) {
         if (a_->grad == NULL) {
-            a_->grad = tensor_fill(0, grad->shape, grad->n_dim, false);
+            a_->grad = tensor_fill(0, a_->shape, a_->n_dim, false);
         }
 
         *a_->grad += (*grad / a_);
-        //a_->grad->print("$log a_ grad");
         a_->backward(a_->grad);  
     }
 }
 
 
-Indexing::Indexing(Tensor* a, int* pos, int l) {
+Indexing::Indexing(Tensor* a, Tensor* X, Tensor* Y) {
     a_ = a;
-    pos_ = pos;
-    l_ = l;
+    X_ = X;
+    Y_ = Y;
  
 }
 
 void Indexing::backward(Tensor* grad) {
-    //a_->print("$a_ of indexing");
-    //grad->print("$indexing grad");
+
     if (a_->requires_grad) {
         if (a_->grad == NULL) {
             a_->grad = tensor_fill(0, a_->shape, a_->n_dim, false);
         }
-        //a_->print("a_");
-        //grad->print("grad");
-        for (int i = 0; i < l_; i++) {
-            a_->grad->data[pos_[i]] += grad->data[i];
-            //printf("\ndata[%d] += %f", pos_[i], grad->data[i]);
+        for (int i = 0; i < X_->size; i++) {
+            int idx = X_->data[i] + Y_->data[i] * a_->strides[0];
+            a_->grad->data[idx] += grad->data[idx]; 
         }
-        //a_->grad->print("$indexing a_ grad");
         a_->backward(a_->grad);  
     }
 }
@@ -300,3 +295,34 @@ void Max::backward(Tensor* grad) {
     }
 }
 
+Transpose::Transpose(Tensor* a) {
+    a_ = a;
+
+}
+
+void Transpose::backward(Tensor* grad) {
+
+    if (a_->requires_grad) {
+        if (a_->grad == NULL) {
+            a_->grad = tensor_fill(0, a_->shape, a_->n_dim, false);
+        }
+        *a_->grad += grad->t();
+        a_->backward(a_->grad);  
+    }
+}
+
+Broadcast::Broadcast(Tensor* a, Tensor* one) {
+    a_ = a;
+    one_ = one;
+}
+
+void Broadcast::backward(Tensor* grad) {
+
+    if (a_->requires_grad) {
+        if (a_->grad == NULL) {
+            a_->grad = tensor_fill(0, a_->shape, a_->n_dim, false);
+        }
+        *a_->grad += *grad & one_->t();
+        a_->backward(a_->grad);  
+    }
+}
