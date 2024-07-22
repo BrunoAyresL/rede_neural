@@ -209,7 +209,7 @@ void Sum::backward(Tensor* grad) {
         if (dim_ == 1) {
             *a_->grad += *grad & one_->t();
         } else if (dim_ == 0) {
-            *a_->grad += *one_ * grad;
+            *a_->grad += *grad & one_; 
         }
         a_->backward(a_->grad);  
     }
@@ -262,8 +262,8 @@ void Indexing::backward(Tensor* grad) {
             a_->grad = tensor_fill(0, a_->shape, a_->n_dim, false);
         }
         for (int i = 0; i < X_->size; i++) {
-            int idx = X_->data[i] + Y_->data[i] * a_->strides[0];
-            a_->grad->data[idx] += grad->data[idx]; 
+            int idx = X_->data[i] + Y_->data[i] * a_->shape[1];
+            a_->grad->data[idx] += grad->data[i]; 
         }
         a_->backward(a_->grad);  
     }
@@ -322,7 +322,14 @@ void Broadcast::backward(Tensor* grad) {
         if (a_->grad == NULL) {
             a_->grad = tensor_fill(0, a_->shape, a_->n_dim, false);
         }
-        *a_->grad += *grad & one_->t();
+
+        if (one_->size == 1) {
+            *a_->grad += grad;    
+        } else {
+            *a_->grad += *grad & one_->t();
+        }
+
+
         a_->backward(a_->grad);  
     }
 }

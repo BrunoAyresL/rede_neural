@@ -224,6 +224,10 @@ public:
         }
     }
     
+    void sprint(const char str[]  = " ") {
+        printf("\n%s -> ", str);
+        printf("%f", data[0]);
+    }
 
 };
 

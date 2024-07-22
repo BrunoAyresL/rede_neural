@@ -49,7 +49,8 @@
         for (int i = 0; i < this_->n_dim; i++) {
             if (this_->shape[i] != other_->shape[i]) {
                 printf("\nERRO: Soma (+=) de tensores de formatos diferentes.");
-
+                this->print("this");
+                other->print("other");
                 exit(1);
             }
         }
@@ -69,6 +70,8 @@
         for (int i = 0; i < this_->n_dim; i++) {
             if (this_->shape[i] != other_->shape[i]) {
                 printf("\nERRO: Multiplicação escalar de tensores de formatos diferentes. (%d - %d)", this_->shape[i], other_->shape[i]);
+                this_->print("this");
+                other_->print("other");
                 exit(1);
             }
         }
@@ -145,22 +148,24 @@
             return (*this * other);
         }
 
-        if (n_dim == 1 && other->n_dim > 1) {
+        if ((n_dim == 1 && other->n_dim > 1) || (size == 1 && other->n_dim > 1)) {
             // new dim - shape x,1
-            if (shape[0] != other->shape[1]) {
+            if (shape[0] != other->shape[0]) {
                 printf("\nERRO: Produto de matriz e vetor incompatível.");
                 printf("\n1 dim, 2 dim");
                 printf("\n(%d) x (%d, %d)", shape[0], other->shape[0], other->shape[1]);
+                this->print("this");
+                other->print("other");
                 exit(1);
             }
 
-            int result_size = other->shape[0];
+            int result_size = other->shape[1];
             float* result_data = new float[result_size];
 
             // matriz x vetor
             for (int i = 0; i < result_size; i++) {
                 result_data[i] = 0.0;
-                for (int j = 0; j < other->shape[1]; j++) {
+                for (int j = 0; j < other->shape[0]; j++) {
                     result_data[i] += other->data[j * other->strides[0] + i] * data[j];
                 }
             }
@@ -175,9 +180,9 @@
         }
 
 
-        if (n_dim > 1 && other->n_dim == 1) {
+        if ((n_dim > 1 && other->n_dim == 1) || (other->size == 1 && n_dim > 1)) {
 
-            if (other->shape[0] != shape[1]) {
+            if (other->shape[0] != shape[0]) {
                 printf("\nERRO: Produto de matriz e vetor incompatível.");
                 printf("\n2 dim, 1 dim");
                 exit(1);

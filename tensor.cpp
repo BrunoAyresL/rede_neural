@@ -42,7 +42,18 @@ Tensor* tensor_rand(int* shape, int n_dim, bool req_grad = false) {
     return t;
 }
 
-
+Tensor* tensor_range(int first, int last, bool req_grad = false) {
+    int size = last - first;
+    float* data = new float[size];
+    for (int i = 0; i < size; i++) {
+        data[i] = (float) first + i;
+    }
+    int shape[1] = {size}; 
+    Tensor* t = new Tensor(data, shape, 1, req_grad);
+    if (req_grad) t->op = "Range";
+    else t->op = "Grad";
+    return t;
+}
 
 Tensor* tensor_fill(float x, int* shape, int n_dim, bool req_grad = false) {
     int size = 1;
@@ -75,11 +86,23 @@ void Tensor::expand(int* new_shape) {
 }
 
 Tensor* Tensor::t() {
-    if (n_dim != 2) {
-        printf("\nNúmero de dimensões deve ser 2 para transpor.");
+    if (size == 0) {
+        return this;
     }
+
+    if (n_dim == 1) {
+        int new_shape[2] = {shape[0], 1};
+        Tensor* result = new Tensor(data, new_shape, 2, requires_grad);
+        if (requires_grad) {
+            result->op = "Transpose";
+            result->grad_fn = new Transpose(this);
+        }
+
+        return result;
+    }
+
     float* new_data = new float[size];
-    for (int i = 0; i < shape[0]; ++i) {
+    for (int i = 0; i < shape[0]; i++) {
         for (int j = 0; j < shape[1]; ++j) {
             new_data[j * shape[0] + i] = data[i * strides[0] + j * strides[1]];
         }
@@ -156,22 +179,11 @@ Tensor* Tensor::tanh() {
 }
 
 Tensor* Tensor::mean() {
-    float mean = 0.0;
-    for (int i = 0; i < size; i++) {
-        mean += data[i];
-    }
-    mean /= (float)size;
 
-    float* new_data = new float[size];
-    for (int i = 0; i < size; i++) {
-        new_data[i] = mean;
-    }
-
-    Tensor* result = new Tensor(new_data, shape, n_dim, requires_grad);
-    result->is_scalar = true;
+    Tensor* result = *this->sum(-1) * powf( (float) size, -1);
+    //result->is_scalar = true;
     if (requires_grad) {
         result->op = "Mean";
-        result->grad_fn = new Mean(this);
     }
     return result; 
 }
@@ -226,7 +238,7 @@ Tensor* Tensor::sum(int dim = 0) {
     // A = m x n -> 1^ 1x m * A       
         int one_shape[2] = {1, shape[0]};
         Tensor* one = tensor_fill(1.0, one_shape, 2, requires_grad);
-        Tensor* result = *one & this;
+        Tensor* result = *one & this->t();
         if (requires_grad) {
             result->op = "Sum0";
             result->grad_fn = new Sum(this, one, dim);
@@ -244,7 +256,14 @@ Tensor* Tensor::sum(int dim = 0) {
         }
         return result;    
     }
-
+    
+    // if: sum all
+    if (n_dim > 1) {
+        return this->sum(1)->sum(0);
+    } else {
+        this->sum(0);
+    }
+    
 }
 
 
@@ -329,10 +348,17 @@ Tensor* Tensor::softmax() {
     float* new_data = new float[size];
 
     // softmax
-    //
-    //
-    //
-    //
+    /*
+    Tensor* xenc = xs->one_hot(27);   
+
+        Tensor* logits = (*xenc & W);
+        Tensor* logits_maxes = logits->max(1);
+        Tensor* norm_logits = *logits - logits_maxes; 
+        // softmax
+        Tensor* counts = norm_logits->exp();
+        Tensor* counts_sum = counts->sum(1);
+        Tensor* probs = *counts / counts_sum;
+    */
 
     Tensor* t_new = new Tensor(new_data, shape, n_dim);
     return t_new;
@@ -497,9 +523,11 @@ Tensor* Tensor::broadcast(Tensor* other) {
 */
 
 Tensor* handle_broadcast(Tensor* a, Tensor* b) {
-    if (a->n_dim == 1 && b->n_dim == 1 && a->shape[0] == b->shape[0]) {
+    if (a->n_dim == 1 && b->n_dim == 1) {
         //printf("\caso 1");
-        return a;
+        if (a->shape[0] < b->shape[0]) {
+            return a->broadcast(b);
+        }
     }
     if (a->n_dim > b->n_dim) {
         //printf("\caso 2");
@@ -512,6 +540,9 @@ Tensor* handle_broadcast(Tensor* a, Tensor* b) {
             return a->broadcast(b);
         } else {
             printf("\nBroadcast not possible");
+            a->print("a");
+            b->print("b");
+            exit(1);
         }
     }
 
@@ -534,6 +565,15 @@ Tensor* Tensor::broadcast(Tensor* other) {
     if (shape[0] == other->shape[0] && shape[1] == other->shape[1]) {
         printf("all correct");
     }
+
+    if (size == 1) {
+        Tensor* one = tensor_fill(1.0, this->shape, this->n_dim, requires_grad);
+        Tensor* result = tensor_fill(this->data[0], other->shape, other->n_dim, requires_grad);
+        if (requires_grad) {
+            result->grad_fn = new Broadcast(this, one);
+        }   
+    }
+
 
     if (n_dim == 1) {
         int one_shape[2] = {1, other->shape[1]};
@@ -580,10 +620,13 @@ Tensor* Tensor::broadcast(Tensor* other) {
     */
 
 Tensor* Tensor::index(Tensor* X, Tensor* Y) {
-    Tensor* X_enc = X->one_hot(27);
-    Tensor* Y_enc = Y->one_hot(27);
-
-    Tensor* result = *(*X_enc & this) & Y_enc->t();
+    float* new_data = new float[X->size];
+    for (int i = 0; i < X->size; i++) {
+        int idx = Y->data[i] + X->data[i] * strides[0];
+        new_data[i] = data[idx];
+    }
+    
+    Tensor* result = new Tensor(new_data, X->shape, 1, requires_grad);
     if (requires_grad) {
         result->op = "Indexing";
         result->grad_fn = new Indexing(this, X, Y);
