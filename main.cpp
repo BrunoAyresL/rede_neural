@@ -69,6 +69,12 @@ int main() {
             j++;
         }
         int xs_shape[1] = {j};
+        Tensor* xs = new Tensor(data_xs, xs_shape, 1, true);
+        Tensor* ys = new Tensor(data_ys, xs_shape, 1, true);
+        
+        printf("\nnumero de exemplos: %d", j);
+
+
 
         // j é o tamanho do input
         float range[j];
@@ -76,10 +82,9 @@ int main() {
             range[i] = (float) i;
         }
 
-        printf("\nnumero de exemplos: %d", j);
+        
 
-        Tensor* xs = new Tensor(data_xs, xs_shape, 1, true);
-        Tensor* ys = new Tensor(data_ys, xs_shape, 1, true);
+        
         int w_shape[2] = {27, 27};
         Tensor* W = tensor_rand(w_shape, 2, true);
 
