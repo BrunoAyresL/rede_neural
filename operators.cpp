@@ -112,12 +112,8 @@
 
         Tensor* other_ = other;
         Tensor* this_ = this;
-        if ((shape[0] == 1 || shape[1] == 1 || n_dim == 1) && other->n_dim > 1) {
-            this_ = broadcast(other);  
-        } 
-        if (n_dim > 1 && (other->shape[0] == 1 || other->shape[1] == 1 || other->n_dim == 1)) {
-            other_ = other->broadcast(this);
-        }
+        this_ = handle_broadcast(this, other);
+        other_ = handle_broadcast(other, this_);
 
         for (int i = 0; i < this_->n_dim; i++) {
             if (this_->shape[i] != other_->shape[i]) {
@@ -158,7 +154,6 @@
                 other->print("other");
                 exit(1);
             }
-
             int result_size = other->shape[1];
             float* result_data = new float[result_size];
 
@@ -170,8 +165,8 @@
                 }
             }
             
-            int result_shape[] = {result_size};
-            Tensor* result = new Tensor(result_data, result_shape, 1, other->requires_grad);
+            int result_shape[2] = {1, result_size};
+            Tensor* result = new Tensor(result_data, result_shape, 2, other->requires_grad);
             if (requires_grad) {
                 result->op = "Matmul1";
                 result->grad_fn = new MatMul(this, other);
@@ -182,9 +177,11 @@
 
         if ((n_dim > 1 && other->n_dim == 1) || (other->size == 1 && n_dim > 1)) {
 
-            if (other->shape[0] != shape[0]) {
+            if (other->shape[0] != shape[1]) {
                 printf("\nERRO: Produto de matriz e vetor incompatível.");
                 printf("\n2 dim, 1 dim");
+                this->print("THIS");
+                other->print("OTHER");
                 exit(1);
             }
 

@@ -24,6 +24,8 @@ public:
     int* shape;
 
     bool requires_grad;
+    bool keep_grad;
+
     Function* grad_fn;
     Tensor* grad;
     bool is_scalar;
@@ -35,7 +37,7 @@ public:
     Tensor(float* new_data, int* new_shape, int new_n_dim, bool req_grad=false) {
         is_scalar = false;
         requires_grad = req_grad;
-
+        keep_grad = false;
         if (req_grad) {
             TensorRegistry::add(this);
         }
@@ -76,13 +78,14 @@ public:
 
     // destructor
     ~Tensor() {
-        //print("$Deleted ");
+        TensorRegistry::remove(this);
         delete[] data;
         if (grad != nullptr) {
             delete grad;
         }
         delete[] strides;
         delete[] shape;
+        delete grad_fn;
     }
 
     void zero_grad() {
@@ -111,7 +114,6 @@ public:
 
     void backward(Tensor* grad_output);
 
-    void expand(int* new_shape);
     Tensor* broadcast(Tensor* other);
     Tensor* t();
     void t_();
@@ -127,6 +129,8 @@ public:
     Tensor* cos();
     Tensor* tan();
     Tensor* softmax();
+    Tensor* nll(Tensor* y);
+    Tensor* cross_entropy(Tensor* targets);
     Tensor* max(int dim);
     Tensor* one_hot(int size);
     Tensor* index(Tensor* X, Tensor* Y);
