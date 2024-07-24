@@ -419,7 +419,6 @@ Tensor* handle_broadcast(Tensor* a, Tensor* b) {
         }
 
         if (a->shape[0] == b->shape[1]) {
-            //printf("\caso 3");
             return a->broadcast(b);
         } else {
             printf("\nBroadcast not possible");
@@ -437,6 +436,12 @@ Tensor* handle_broadcast(Tensor* a, Tensor* b) {
         //printf("\ncaso 5:");
         return a->broadcast(b);
     }
+
+    if (a->shape[1] == b->shape[1] && a->shape[0] < b->shape[0]) {
+        return a->broadcast(b);
+    }
+    // 32, 100
+    //  1, 100
     //printf("\ncaso 6:");
     //printf("\n%d, %d - %d, %d", a->shape[0], a->shape[1], b->shape[0], b->shape[1]);
     return a;
@@ -458,6 +463,18 @@ Tensor* Tensor::broadcast(Tensor* other) {
         return result;
     }
 
+    if (shape[0] == 1) {
+        int one_shape[2] = {other->shape[0], 1};
+        Tensor* one = tensor_fill(1.0, one_shape, 2, requires_grad);
+        Tensor* result = *one & this;
+        if (requires_grad) {
+            result->grad_fn = new Broadcast(this, one);
+        }
+        return result;
+    }
+
+
+
     if (n_dim == 1) {
 
         if (other->shape[0] == 1) {
@@ -465,8 +482,6 @@ Tensor* Tensor::broadcast(Tensor* other) {
             Tensor* result = new Tensor(data, new_shape, 2, requires_grad);
             return result; 
         }
-
-
 
         int one_shape[2] = {1, other->shape[1]};
         Tensor* one = tensor_fill(1.0, one_shape, 2, requires_grad);
@@ -492,25 +507,6 @@ Tensor* Tensor::broadcast(Tensor* other) {
 }
 
 
-/*
-    int* pos = new int[l];
-    float* new_data = new float[l];
-    for (int i = 0; i < l; i++) {
-        int idx = (int) (y[i] + (int) x[i] * strides[0]); 
-        //printf("\n (%d, %d) >>> %d -   %f", (int)x[i], (int)y[i],idx, data[idx]);
-        new_data[i] = data[idx];
-        pos[i] = idx;
-    }
-
-    int new_shape[1] = {l};
-    Tensor* result = new Tensor(new_data, new_shape, 1, requires_grad);
-    if (requires_grad) {
-        result->op = "Indexing";
-        result->grad_fn = new Indexing(this, pos, l);
-    }
-    return result;
-    */
-
 Tensor* Tensor::index(Tensor* X, Tensor* Y) {
     float* new_data = new float[X->size];
     for (int i = 0; i < X->size; i++) {
@@ -525,6 +521,25 @@ Tensor* Tensor::index(Tensor* X, Tensor* Y) {
     }
     return result;
 }
+
+Tensor* Tensor::reshape(int* new_shape, int new_n_dim) {
+    int new_size = 1;
+    for (int i = 0; i < new_n_dim; i++) {
+        new_size *= new_shape[i];
+    }
+    if (new_size != size) {
+        printf("\nNovo formato para o tensor não coincide.");
+        exit(1);
+    }
+
+    Tensor* result = new Tensor(data, new_shape, new_n_dim, requires_grad);
+    if (requires_grad) {
+        result->op = "Reshape";
+        result->grad_fn = new Reshape(this);
+    }
+    return result;
+}
+
 
 
 // criar outro arquivo dps:

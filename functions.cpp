@@ -145,7 +145,7 @@ Tanh::Tanh(Tensor* a, Tensor* result) {
 void Tanh::backward(Tensor* grad) {
     if (a_->requires_grad) {
         if (a_->grad == NULL) {
-            a_->grad = tensor_fill(0.0, grad->shape, grad->n_dim, false);
+            a_->grad = tensor_fill(0.0, a_->shape, a_->n_dim, false);
         }
 
         *a_->grad += (*grad * (result_->pow(2)));
@@ -319,11 +319,32 @@ void Broadcast::backward(Tensor* grad) {
 
         if (one_->size == 1) {
             *a_->grad += grad;    
-        } else {
+        } else if (one_->shape[1] == 1) {
+            // xa ay
+            // ya ax
+            *a_->grad += *one_->t() & grad;
+        } 
+        else {
             *a_->grad += *grad & one_->t();
         }
 
 
+        a_->backward(a_->grad);  
+    }
+}
+
+Reshape::Reshape(Tensor* a) {
+    a_ = a;
+
+}
+
+void Reshape::backward(Tensor* grad) {
+
+    if (a_->requires_grad) {
+        if (a_->grad == NULL) {
+            a_->grad = tensor_fill(0.0, a_->shape, a_->n_dim, false);
+        }
+        *a_->grad += grad->reshape(a_->shape, a_->n_dim);
         a_->backward(a_->grad);  
     }
 }

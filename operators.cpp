@@ -16,6 +16,8 @@
             if (this_->shape[i] != other_->shape[i]) {
                 printf("\nERRO: Soma de tensores de formatos diferentes.");
                 printf("\n>> %d, >> %d", this_->shape[i], other_->shape[i]);
+                this_->print("this_");
+                other_->print("other_");
                 exit(1);
             }
         }

@@ -134,7 +134,9 @@ public:
     Tensor* max(int dim);
     Tensor* one_hot(int size);
     Tensor* index(Tensor* X, Tensor* Y);
-    
+    Tensor* reshape(int* new_shape, int new_n_dim);
+
+
     void print(const char str[]  = " ") {
 
         // modo compacto

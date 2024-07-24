@@ -148,6 +148,14 @@ class Broadcast: public Function {
         Tensor* one_;
 };
 
+class Reshape : public Function {
+    public:
+        Reshape(Tensor* a);
+        void backward(Tensor* grad) override;
+    private: 
+        Tensor* a_;
+};
+
 class CrossEntropy: public Function {
     public:
         CrossEntropy(Tensor* a, Tensor* targets);
