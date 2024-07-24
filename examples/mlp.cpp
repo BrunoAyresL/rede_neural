@@ -77,23 +77,19 @@ int main() {
     }
 
     printf("\nnumero de exemplos: %d", j);  
-
+    batch_size = j;
     // --------
 
     int x_shape[1] = {batch_size * block_size};
     int y_shape[1] = {batch_size};
     Tensor* xs = new Tensor(data_xs, x_shape, 1, true);
     Tensor* ys = new Tensor(data_ys, y_shape, 1, true);
-    Tensor* xenc = xs->one_hot(27);
-    Tensor* yenc = ys->one_hot(27);
 
     int c_shape[2] = {27, 2};
     int w1_shape[2] = {block_size * 2, 100};
     int b1_shape[2] = {1, 100};
     int w2_shape[2] = {100, 27};
     int b2_shape[2] = {1, 27};
-    int emb_shape[2] = {batch_size, block_size * 2};
-
     Tensor* C  = tensor_rand(c_shape,  2, true);
     Tensor* W1 = tensor_rand(w1_shape, 2, true);
     Tensor* b1 = tensor_rand(b1_shape, 2, true);
@@ -108,32 +104,38 @@ int main() {
     }
     printf("\nnumero de parametros: %d", n_params);
 
-    Tensor* emb = (*xenc & C)->reshape(emb_shape, 2);
-    Tensor* h = (*(*emb & W1) + b1)->tanh();
-    Tensor* logits = *(*h & W2) + b2;
-    Tensor* loss = logits->cross_entropy(yenc);
-    TensorRegistry::zero_grad();
-    loss->backward();
-
-    float learning_rate = -0.1;
-    int iterations = 10 ;
-    
-    // minibatch
+    int mb_size = 32;
 
     std::default_random_engine generator(static_cast<unsigned>(std::time(nullptr)));
-    std::uniform_int_distribution<int> distribution(0, xs.shape[0]);
-    int* ix = new int[32];
-    for (int i = 0; i < 32; i++) {
-        ix[i] = distribution(generator);
-    }
-
+    std::uniform_int_distribution<int> distribution(0, batch_size);
+    int newx_shape[1] = {mb_size * block_size};
+    int newy_shape[1] = {mb_size};
+    int emb_shape[2] = {mb_size, block_size * 2};
     
+    float learning_rate = -0.01;
+    int iterations = 10000;
     for (int i = 0; i < iterations; i++) {
 
-        emb = (*xenc & C)->reshape(emb_shape, 2);
-        h = (*(*emb & W1) + b1)->tanh();
-        logits = *(*h & W2) + b2;
-        loss = logits->cross_entropy(yenc);
+
+        float* newx_data = new float[mb_size * block_size];
+        float* newy_data = new float[mb_size];
+        for (int i = 0; i < mb_size; i++) {
+            int ix = distribution(generator);
+            for (int k = 0; k < block_size; k++) {
+                newx_data[i*block_size + k] = xs->data[ix*block_size + k];
+            }
+            newy_data[i] = ys->data[ix];
+        }
+        Tensor* batch_X = new Tensor(newx_data, newx_shape, 1, true);
+        Tensor* batch_Y = new Tensor(newy_data, newy_shape, 1, true);
+        Tensor* xenc = batch_X->one_hot(27);
+        Tensor* yenc = batch_Y->one_hot(27);
+
+        //
+        Tensor* emb = (*xenc & C)->reshape(emb_shape, 2);
+        Tensor* h = (*(*emb & W1) + b1)->tanh();
+        Tensor* logits = *(*h & W2) + b2;
+        Tensor* loss = logits->cross_entropy(yenc);
         //
         
         TensorRegistry::zero_grad();
@@ -142,8 +144,10 @@ int main() {
         for (int n = 0; n < 5; n++) {
             *parameters[n] += *parameters[n]->grad * learning_rate;
         }
+        if (i % 50 == 0) {
+            loss->sprint("loss");
+        }
         
-        loss->sprint("loss");
         TensorRegistry::clear();
     }
 
