@@ -26,7 +26,7 @@ char itol(int number) {
     if (number == 0) {
         return '.';
     }
-    return 'A' + (number - 1);
+    return 'a' + (number - 1);
 }
 
 int ltoi(char c) {
@@ -53,8 +53,8 @@ int main() {
     int batch_size = str.length();
     int block_size = 3;
 
-    float* data_xs = new float[batch_size * block_size];
-    float* data_ys = new float[batch_size];
+    std::vector<float> data_xs(batch_size * block_size);
+    std::vector<float> data_ys(batch_size);
 
     int j = 0;
     for (int i = 0; i < (int)str.length(); i++) {
@@ -80,23 +80,23 @@ int main() {
     batch_size = j;
     // --------
 
-    int x_shape[1] = {batch_size * block_size};
-    int y_shape[1] = {batch_size};
-    Tensor* xs = new Tensor(data_xs, x_shape, 1, true);
-    Tensor* ys = new Tensor(data_ys, y_shape, 1, true);
+    std::vector<int> x_shape = {batch_size * block_size};
+    std::vector<int> y_shape = {batch_size};
+    Tensor* xs = new Tensor(data_xs, x_shape, true);
+    Tensor* ys = new Tensor(data_ys, y_shape, true);
 
-    int c_shape[2] = {27, 2};
-    int w1_shape[2] = {block_size * 2, 100};
-    int b1_shape[2] = {1, 100};
-    int w2_shape[2] = {100, 27};
-    int b2_shape[2] = {1, 27};
-    Tensor* C  = tensor_rand(c_shape,  2, true);
-    Tensor* W1 = tensor_rand(w1_shape, 2, true);
-    Tensor* b1 = tensor_rand(b1_shape, 2, true);
-    Tensor* W2 = tensor_rand(w2_shape, 2, true);
-    Tensor* b2 = tensor_rand(b2_shape, 2, true);
+    std::vector<int> c_shape = {27, 2};
+    std::vector<int> w1_shape = {block_size * 2, 100};
+    std::vector<int> b1_shape = {1, 100};
+    std::vector<int> w2_shape = {100, 27};
+    std::vector<int> b2_shape = {1, 27};
+    Tensor* C  = tensor_rand(c_shape, true);
+    Tensor* W1 = tensor_rand(w1_shape, true);
+    Tensor* b1 = tensor_rand(b1_shape, true);
+    Tensor* W2 = tensor_rand(w2_shape, true);
+    Tensor* b2 = tensor_rand(b2_shape, true);
 
-    Tensor* parameters[5] = {C, W1, b1, W2, b2};
+    std::vector<Tensor*> parameters = {C, W1, b1, W2, b2};
     int n_params = 0;
     for (int i = 0; i < 5; i++) {
         parameters[i]->keep_grad = true;
@@ -104,21 +104,19 @@ int main() {
     }
     printf("\nnumero de parametros: %d", n_params);
 
-    int mb_size = 32;
+    int mb_size = 64;
 
     std::default_random_engine generator(static_cast<unsigned>(std::time(nullptr)));
     std::uniform_int_distribution<int> distribution(0, batch_size);
-    int newx_shape[1] = {mb_size * block_size};
-    int newy_shape[1] = {mb_size};
-    int emb_shape[2] = {mb_size, block_size * 2};
-    
-    float learning_rate = -0.01;
-    int iterations = 10000;
-    for (int i = 0; i < iterations; i++) {
+    std::vector<int> newx_shape = {mb_size * block_size};
+    std::vector<int> newy_shape = {mb_size};
+    std::vector<int> emb_shape = {mb_size, block_size * 2};
+    float learning_rate = -0.1;
+    int iterations = 50000;
+    for (int iter = 0; iter < iterations; iter++) {
 
-
-        float* newx_data = new float[mb_size * block_size];
-        float* newy_data = new float[mb_size];
+        std::vector<float> newx_data(mb_size * block_size);
+        std::vector<float> newy_data(mb_size);
         for (int i = 0; i < mb_size; i++) {
             int ix = distribution(generator);
             for (int k = 0; k < block_size; k++) {
@@ -126,31 +124,86 @@ int main() {
             }
             newy_data[i] = ys->data[ix];
         }
-        Tensor* batch_X = new Tensor(newx_data, newx_shape, 1, true);
-        Tensor* batch_Y = new Tensor(newy_data, newy_shape, 1, true);
+
+        Tensor* batch_X = new Tensor(newx_data, newx_shape, true);
+        Tensor* batch_Y = new Tensor(newy_data, newy_shape, true);
         Tensor* xenc = batch_X->one_hot(27);
         Tensor* yenc = batch_Y->one_hot(27);
-
         //
-        Tensor* emb = (*xenc & C)->reshape(emb_shape, 2);
+        Tensor* emb = (*xenc & C)->reshape(emb_shape);
         Tensor* h = (*(*emb & W1) + b1)->tanh();
         Tensor* logits = *(*h & W2) + b2;
         Tensor* loss = logits->cross_entropy(yenc);
         //
         
         TensorRegistry::zero_grad();
-
         loss->backward();
         for (int n = 0; n < 5; n++) {
             *parameters[n] += *parameters[n]->grad * learning_rate;
         }
-        if (i % 50 == 0) {
+        if (iter % 1000 == 0) {
+            learning_rate *= 0.95;
+            printf("\n\n---- [ %d ] ----\nlr = %f", iter, learning_rate);
             loss->sprint("loss");
         }
-        
+
         TensorRegistry::clear();
+        delete batch_X;
+        delete batch_Y;
+        delete xenc;
+        delete yenc;
+        delete emb;
+        delete h;
+        delete logits;
+        delete loss;
+    }
+    printf("\n Training done.");
+    // final loss: 
+    std::vector<int> final_emb_shape = {batch_size, block_size * 2};
+    Tensor* xenc = xs->one_hot(27);
+    Tensor* yenc = ys->one_hot(27);
+    Tensor* emb = (*xenc & C)->reshape(final_emb_shape);
+    Tensor* h = (*(*emb & W1) + b1)->tanh();
+    Tensor* logits = *(*h & W2) + b2;
+    Tensor* loss = logits->cross_entropy(yenc);
+    loss->sprint("final loss");
+
+    printf("\n\n");
+    // sample
+    float bias_factor = 1.7;
+    std::vector<int> sample_emb_shape = {1, block_size * 2};
+    for (int i = 0; i < 80; i++) {
+        int k = 3;
+        std::string out = "";
+        std::vector<float> ix(3.0, 0.0);
+        while (true) {
+            //printf("\n");
+            for (int g = 0; g < ix.size(); g++) {
+                //printf("%c", itol(ix[g]));
+            }
+            std::vector<int> sample_x_shape = {3};
+            Tensor* sample_x = new Tensor(ix, sample_x_shape, true);
+            Tensor* sample_xenc = sample_x->one_hot(27);
+            Tensor* emb = (*sample_xenc & C)->reshape(sample_emb_shape);
+            Tensor* h = (*(*emb & W1) + b1)->tanh();
+            Tensor* sample_logits = *(*h & W2) + b2;
+            Tensor* sample_probs = sample_logits->softmax();
+            ix[k] = multinomial(sample_probs->data, 27, bias_factor);
+            if (ix[k] == 0) {
+                break;
+            }
+
+            for (int l = 0; l < ix.size(); l++) {
+                ix[l] = ix[l + 1];
+            }
+            out += itol(ix[k-1]);
+        }
+        out[0] = std::toupper(out[0]);
+        if (out.length() > 3 && out.length() < 13) {
+            std::cout << out << std::endl;
+        }
     }
 
-
-
+    int close;
+    scanf("%d", &close);
     }

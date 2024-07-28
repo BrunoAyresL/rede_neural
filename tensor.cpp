@@ -9,78 +9,81 @@
 
 void Tensor::backward(Tensor* grad_output = NULL) {
         if (requires_grad) {
+            std::vector<int> grad_shape = shape;
             if (grad_output == NULL) {
-                grad_output = tensor_fill(1.0, shape, n_dim, false);
-                grad = tensor_fill(1.0, shape, n_dim, false);
+                grad_output = tensor_fill(1.0, grad_shape, false);
+                grad = tensor_fill(1.0, grad_shape, false);
             }
             if (grad == NULL) {
-                grad = tensor_fill(0.0, shape, n_dim, false);
+                grad = tensor_fill(0.0, grad_shape, false);
             }
-            //grad_output->print("out");
-            //this->print("this out");
-            //std::cout << op << std::endl;
+
             grad_fn->backward(grad_output);
         }
     }
 
-
-Tensor* tensor_rand(int* shape, int n_dim, bool req_grad = false) {
-    int size = 1;
-    for (int i = 0; i < n_dim; i++) {
-        size *= shape[i];
+Tensor* tensor_rand(std::vector<int> shape, bool req_grad = false) {
+    int result_size = 1;
+    for (auto dim : shape) {
+        result_size *= dim;
     }
-    float* data = new float[size];
 
-    // random
+    std::vector<float> result_data(result_size);
+
     std::random_device rd;
     std::mt19937 gen(rd());
-    //std::normal_distribution<> distrib(-1.0, 1.0);
     std::uniform_real_distribution<> distrib(-0.5, 0.5);
 
-    for (int i = 0; i < size; i++) {
-        data[i] = (float) distrib(gen);
+    for (int i = 0; i < result_size; i++) {
+        result_data[i] = static_cast<float>(distrib(gen));
     }
-    Tensor* t = new Tensor(data, shape, n_dim, req_grad);
-    t->op = "Rand";
-    return t;
+
+    std::vector<int> result_shape = shape;
+    auto result = new Tensor(result_data, result_shape, req_grad);
+    result->op = req_grad ? "Rand" : "Grad";
+    return result;
 }
 
 Tensor* tensor_range(int first, int last, bool req_grad = false) {
-    int size = last - first;
-    float* data = new float[size];
-    for (int i = 0; i < size; i++) {
-        data[i] = (float) first + i;
+
+    int result_size = last - first;
+
+    std::vector<float> result_data(result_size);
+
+    for (int i = 0; i < result_size; i++) {
+        result_data[i] = static_cast<float>(first + i);
     }
-    int shape[1] = {size}; 
-    Tensor* t = new Tensor(data, shape, 1, req_grad);
-    if (req_grad) t->op = "Range";
-    else t->op = "Grad";
-    return t;
+
+    std::vector<int> result_shape = {result_size}; 
+
+    auto result = new Tensor(result_data, result_shape, req_grad);
+    result->op = req_grad ? "Range" : "Grad";
+    return result;
 }
 
-Tensor* tensor_fill(float x, int* shape, int n_dim, bool req_grad = false) {
-    int size = 1;
-    for (int i = 0; i < n_dim; i++) {
-        size *= shape[i];
+Tensor* tensor_fill(float x, std::vector<int> shape, bool req_grad = false) {
+
+    int result_size = 1;
+    for (auto const& dim : shape) {
+        result_size *= dim;
     }
-    float* data = new float[size];
-    for (int i = 0; i < size; i++) {
-        data[i] = x;
-    }
-    Tensor* t = new Tensor(data, shape, n_dim, req_grad);
-    if (req_grad) t->op = "Fill";
-    else t->op = "Grad";
-    return t;
+
+    std::vector<float> result_data(result_size, x);
+
+    auto result = new Tensor(result_data, shape, req_grad);
+    result->op = req_grad ? "Fill" : "Grad";
+    return result;
 }
+
 
 Tensor* Tensor::t() {
-    if (size == 0) {
+    if (size == 1) {
         return this;
     }
 
     if (n_dim == 1) {
-        int new_shape[2] = {shape[0], 1};
-        Tensor* result = new Tensor(data, new_shape, 2, requires_grad);
+        std::vector<int> result_shape = {shape[0], 1};
+        Tensor* result = new Tensor(data, result_shape, requires_grad);
         if (requires_grad) {
             result->op = "Transpose";
             result->grad_fn = new Transpose(this);
@@ -89,14 +92,16 @@ Tensor* Tensor::t() {
         return result;
     }
 
-    float* new_data = new float[size];
+    std::vector<float> result_data(size);
     for (int i = 0; i < shape[0]; i++) {
         for (int j = 0; j < shape[1]; ++j) {
-            new_data[j * shape[0] + i] = data[i * strides[0] + j * strides[1]];
+            result_data[j * shape[0] + i] = data[i * strides[0] + j * strides[1]];
         }
     }  
-    int new_shape[] = {shape[1], shape[0]};
-    Tensor* result = new Tensor(new_data, new_shape, n_dim, requires_grad);
+
+    std::vector<int> result_shape = {shape[1], shape[0]};
+
+    Tensor* result = new Tensor(result_data, result_shape, requires_grad);
     if (requires_grad) {
         result->op = "Transpose";
         result->grad_fn = new Transpose(this);
@@ -104,61 +109,15 @@ Tensor* Tensor::t() {
     return result;
 }
 
-void Tensor::t_() {
-    if (n_dim != 2) {
-        printf("\nNúmero de dimensões deve ser 2 para transpor.");
-    }
-    float* new_data = new float[size];
+Tensor* Tensor::tanh() {
 
-    for (int i = 0; i < shape[0]; ++i) {
-        for (int j = 0; j < shape[1]; ++j) {
-            new_data[j * shape[0] + i] = data[i * strides[0] + j * strides[1]];
-        }
-    }  
-    int new_shape[] = {shape[1], shape[0]};
-
-    memcpy(data, new_data, size * sizeof(float));
-    memcpy(shape, new_shape, n_dim * sizeof(int));
-
-    int stride = 1;
-    for (int i = n_dim - 1; i >= 0; i--) {
-        strides[i] = stride;
-        stride *= shape[i];
+    std::vector<float> result_data(size);
+    for (int i = 0; i < size; i++) {
+        result_data[i] = tanhf(data[i]);
     }
     
-}
-
-
-Tensor* Tensor::abs() {
-    float* new_data = new float[size];
-
-    for (int i = 0; i < size; i++) {
-        if (data[i] < 0) {
-            new_data[i] = -data[i];
-        } else {
-            new_data[i] = data[i];
-        }
-    }
-
-    Tensor* t_new = new Tensor(new_data, shape, n_dim);
-    return t_new;
-}
-Tensor* Tensor::sqrt() {
-    float* new_data = new float[size];
-
-    for (int i = 0; i < size; i++) {
-        new_data[i] = sqrtf(data[i]);
-    }
-    Tensor* t_new = new Tensor(new_data, shape, n_dim);
-    return t_new;
-}
-Tensor* Tensor::tanh() {
-    float* new_data = new float[size];
-
-    for (int i = 0; i < size; i++) {
-        new_data[i] = tanhf(data[i]);
-    }
-    Tensor* result = new Tensor(new_data, shape, n_dim, requires_grad);
+    std::vector<int> result_shape = shape;
+    Tensor* result = new Tensor(result_data, result_shape, requires_grad);
     if (requires_grad) {
         result->op = "Tanh";
         result->grad_fn = new Tanh(this, result);
@@ -186,10 +145,10 @@ Tensor* Tensor::mean() {
 
 Tensor* Tensor::sum(int dim = 0) {
 
-
     if (dim == 0) {
-        int one_shape[2] = {1, shape[0]};
-        Tensor* one = tensor_fill(1.0, one_shape, 2, requires_grad);
+
+        std::vector<int> one_shape = {1, shape[0]};
+        Tensor* one = tensor_fill(1.0, one_shape, requires_grad);
         Tensor* result = *one & this;  
         if (requires_grad) {
             result->op = "Sum0";
@@ -198,8 +157,8 @@ Tensor* Tensor::sum(int dim = 0) {
         return result;    
     }
     if (dim == 1) {
-        int one_shape[2] = {shape[1], 1};
-        Tensor* one = tensor_fill(1.0, one_shape, 2, requires_grad);
+        std::vector<int> one_shape = {shape[1], 1};
+        Tensor* one = tensor_fill(1.0, one_shape, requires_grad);
         Tensor* result = *this & one;
         if (requires_grad) {
             result->op = "Sum1";
@@ -218,12 +177,12 @@ Tensor* Tensor::sum(int dim = 0) {
 }
 
 Tensor* Tensor::pow(float x) {
-    float* new_data = new float[size];
-
+    std::vector<float> result_data(size);
     for (int i = 0; i < size; i++) {
-        new_data[i] = powf(data[i], x);
+        result_data[i] = powf(data[i], x);
     }
-    Tensor* result = new Tensor(new_data, shape, n_dim, requires_grad);
+    std::vector<int> result_shape = shape;
+    Tensor* result = new Tensor(result_data, result_shape, requires_grad);
     if (requires_grad) {
         result->op = "Pow";
         result->grad_fn = new Pow(this, x);
@@ -232,12 +191,13 @@ Tensor* Tensor::pow(float x) {
 }
 
 Tensor* Tensor::exp() {
-    float* new_data = new float[size];
+    std::vector<float> result_data(size);
 
     for (int i = 0; i < size; i++) {
-        new_data[i] = expf(data[i]);
+        result_data[i] = expf(data[i]);
     }
-    Tensor* result = new Tensor(new_data, shape, n_dim, requires_grad);
+    std::vector<int> result_shape = shape;
+    Tensor* result = new Tensor(result_data, result_shape, requires_grad);
     if (requires_grad) {
         result->op = "Exp";
         result->grad_fn = new Exp(this, result);
@@ -246,12 +206,13 @@ Tensor* Tensor::exp() {
 }
 
 Tensor* Tensor::log() {
-    float* new_data = new float[size];
+    std::vector<float> result_data(size);
 
     for (int i = 0; i < size; i++) {
-        new_data[i] = logf(data[i]);
+        result_data[i] = logf(data[i]);
     }
-    Tensor* result = new Tensor(new_data, shape, n_dim, requires_grad);
+    std::vector<int> result_shape = shape;
+    Tensor* result = new Tensor(result_data, result_shape, requires_grad);
     if (requires_grad) {
         result->op = "Log";
         result->grad_fn = new Log(this);
@@ -280,7 +241,7 @@ Tensor* Tensor::cross_entropy(Tensor* targets) {
     }
     return result;
 }
-
+/*
 Tensor* Tensor::max(int dim = 0) {
         if (dim == 1) {
 
@@ -331,69 +292,26 @@ Tensor* Tensor::max(int dim = 0) {
     }
     return result; 
 }
+*/
 
 Tensor* Tensor::one_hot(int length) {
     if (n_dim > 1) {
         printf("\nOne Hot impossível.");
     }
-    int new_shape[2] = {shape[0], length};
-    float* new_data = new float[size * length];
+    std::vector<int> result_shape = {shape[0], length};
+    std::vector<float> result_data(size * length);
     for (int i = 0; i < shape[0]; i++) {
         for (int j = 0 ; j < length; j++) {
-            if (j == (int) data[i]) new_data[j + i * length] = 1.0;
-            else new_data[j + i * length] = 0.0; 
+            if (j == (int) data[i]) result_data[j + i * length] = 1.0;
+            else result_data[j + i * length] = 0.0; 
             
         }
     }
-    Tensor* result = new Tensor(new_data, new_shape, 2, true);
+    Tensor* result = new Tensor(result_data, result_shape, true);
     result->op = "Onehot";
     return result;
 
 }
-
-
-// broadcast
-// faltam casos de +2 dimensões
-/*
-Tensor* Tensor::broadcast(Tensor* other) {
-    // 0,3,2
-    // 2,3,2
-    if (grad != nullptr) {
-        printf("\n\n BROADCAST WITH TENSOR THAT HAS GRAD");
-    }
-
-    if (n_dim == 1) {
-        float* new_data = new float[other->size];
-        for (int i = 0; i < other->shape[0]; i++) {
-            for (int j = 0; j <other->shape[1]; j++) {
-
-                int dest = j + i * other->strides[0];
-                new_data[dest] = data[j];
-            }
-        }
-
-        Tensor* result = new Tensor(new_data, other->shape, other->n_dim, requires_grad);
-        result->origin = this;
-        return result;
-    }
-
-    if (n_dim == 2) {
-
-        float* new_data = new float[other->size];
-        for (int i = 0; i < other->shape[0]; i++) {
-            for (int j = 0; j < other->shape[1]; j++) {
-
-                int dest = j + i * other->strides[0];
-                new_data[dest] = data[i];
-            }
-        }
-        Tensor* result = new Tensor(new_data, other->shape, other->n_dim, requires_grad);
-        result->origin = this;
-        return result;
-    }
-
-}
-*/
 
 Tensor* handle_broadcast(Tensor* a, Tensor* b) {
 
@@ -455,8 +373,10 @@ Tensor* Tensor::broadcast(Tensor* other) {
     }
 
     if (size == 1) {
-        Tensor* one = tensor_fill(1.0, this->shape, this->n_dim, requires_grad);
-        Tensor* result = tensor_fill(this->data[0], other->shape, other->n_dim, requires_grad);
+        std::vector<int> one_shape = shape;
+        std::vector<int> result_shape = other->shape;
+        Tensor* one = tensor_fill(1.0, one_shape, requires_grad);
+        Tensor* result = tensor_fill(this->data[0], result_shape, requires_grad);
         if (requires_grad) {
             result->grad_fn = new Broadcast(this, one);
         }   
@@ -464,8 +384,8 @@ Tensor* Tensor::broadcast(Tensor* other) {
     }
 
     if (shape[0] == 1) {
-        int one_shape[2] = {other->shape[0], 1};
-        Tensor* one = tensor_fill(1.0, one_shape, 2, requires_grad);
+        std::vector<int> one_shape = {other->shape[0], 1};
+        Tensor* one = tensor_fill(1.0, one_shape, requires_grad);
         Tensor* result = *one & this;
         if (requires_grad) {
             result->grad_fn = new Broadcast(this, one);
@@ -478,13 +398,13 @@ Tensor* Tensor::broadcast(Tensor* other) {
     if (n_dim == 1) {
 
         if (other->shape[0] == 1) {
-            int new_shape[2] = {1, shape[0]}; 
-            Tensor* result = new Tensor(data, new_shape, 2, requires_grad);
+            std::vector<int> result_shape = {1, shape[0]}; 
+            Tensor* result = new Tensor(data, result_shape, requires_grad);
             return result; 
         }
 
-        int one_shape[2] = {1, other->shape[1]};
-        Tensor* one = tensor_fill(1.0, one_shape, 2, requires_grad);
+        std::vector<int> one_shape = {1, other->shape[1]};
+        Tensor* one = tensor_fill(1.0, one_shape, requires_grad);
         Tensor* result = *this->t() & one;
         if (requires_grad) {
             result->grad_fn = new Broadcast(this, one);
@@ -493,8 +413,8 @@ Tensor* Tensor::broadcast(Tensor* other) {
 
     } else {
     
-        int one_shape[2] = {1, other->shape[1]};
-        Tensor* one = tensor_fill(1.0, one_shape, 2, requires_grad);
+        std::vector<int> one_shape = {1, other->shape[1]};
+        Tensor* one = tensor_fill(1.0, one_shape, requires_grad);
         Tensor* result = *this & one;
         if (requires_grad) {
             result->grad_fn = new Broadcast(this, one);
@@ -508,13 +428,13 @@ Tensor* Tensor::broadcast(Tensor* other) {
 
 
 Tensor* Tensor::index(Tensor* X, Tensor* Y) {
-    float* new_data = new float[X->size];
+    std::vector<float> result_data(X->size);
     for (int i = 0; i < X->size; i++) {
         int idx = Y->data[i] + X->data[i] * strides[0];
-        new_data[i] = data[idx];
+        result_data[i] = data[idx];
     }
-    
-    Tensor* result = new Tensor(new_data, X->shape, 1, requires_grad);
+    std::vector<int> result_shape = X->shape;
+    Tensor* result = new Tensor(result_data, result_shape, requires_grad);
     if (requires_grad) {
         result->op = "Indexing";
         result->grad_fn = new Indexing(this, X, Y);
@@ -522,9 +442,9 @@ Tensor* Tensor::index(Tensor* X, Tensor* Y) {
     return result;
 }
 
-Tensor* Tensor::reshape(int* new_shape, int new_n_dim) {
+Tensor* Tensor::reshape(std::vector<int> new_shape) {
     int new_size = 1;
-    for (int i = 0; i < new_n_dim; i++) {
+    for (int i = 0; i < new_shape.size(); i++) {
         new_size *= new_shape[i];
     }
     if (new_size != size) {
@@ -532,7 +452,10 @@ Tensor* Tensor::reshape(int* new_shape, int new_n_dim) {
         exit(1);
     }
 
-    Tensor* result = new Tensor(data, new_shape, new_n_dim, requires_grad);
+    std::vector<float> result_data = data;
+    
+    std::vector<int> result_shape = new_shape;
+    Tensor* result = new Tensor(result_data, result_shape, requires_grad);
     if (requires_grad) {
         result->op = "Reshape";
         result->grad_fn = new Reshape(this);
@@ -544,8 +467,11 @@ Tensor* Tensor::reshape(int* new_shape, int new_n_dim) {
 
 // criar outro arquivo dps:
 
-int multinomial(float* probs, int n_classes) {
+int multinomial(std::vector<float> probs, int n_classes, float bias_factor) {
+    for (int i = 0; i < probs.size(); i++) {
+        probs[i] = powf(probs[i], bias_factor);    
+    }
     static std::default_random_engine generator(static_cast<unsigned>(std::time(nullptr)));
-    std::discrete_distribution<> dist(probs, probs + n_classes);
+    std::discrete_distribution<> dist(probs.begin(), probs.begin() + n_classes);
     return dist(generator); 
 }

@@ -12,22 +12,20 @@
         this_ = handle_broadcast(this, other);
         other_ = handle_broadcast(other, this_);
 
-        for (int i = 0; i < this_->n_dim; i++) {
-            if (this_->shape[i] != other_->shape[i]) {
-                printf("\nERRO: Soma de tensores de formatos diferentes.");
-                printf("\n>> %d, >> %d", this_->shape[i], other_->shape[i]);
-                this_->print("this_");
-                other_->print("other_");
-                exit(1);
-            }
+        if (this_->shape != other_->shape) {
+            printf("\nERRO: Soma de tensores de formatos diferentes.");
+            this_->print("this_");
+            other_->print("other_");
+            exit(1);
         }
+        
 
-        float* new_data = new float[this_->size];
+        std::vector<float> result_data(this_->size);
         for (int i = 0; i < this_->size; i++) {
-            new_data[i] = this_->data[i] + other_->data[i];
+            result_data[i] = this_->data[i] + other_->data[i];
         }
-
-        Tensor* result = new Tensor(new_data, this_->shape, this_->n_dim, requires_grad);
+        std::vector<int> result_shape = this_->shape;
+        Tensor* result = new Tensor(result_data, result_shape, requires_grad);
         if (requires_grad) {
             result->op = "Add";
             result->grad_fn = new Add(this_, other_);
@@ -48,13 +46,11 @@
         this_ = handle_broadcast(this, other);
         other_ = handle_broadcast(other, this_);
 
-        for (int i = 0; i < this_->n_dim; i++) {
-            if (this_->shape[i] != other_->shape[i]) {
-                printf("\nERRO: Soma (+=) de tensores de formatos diferentes.");
-                this->print("this");
-                other->print("other");
-                exit(1);
-            }
+        if (this_->shape != other_->shape) {
+            printf("\nERRO: Soma (+=) de tensores de formatos diferentes.");
+            this->print("this");
+            other->print("other");
+            exit(1);
         }
 
         for (int i = 0; i < this_->size; i++) {
@@ -69,20 +65,20 @@
         this_ = handle_broadcast(this, other);
         other_ = handle_broadcast(other, this_);
 
-        for (int i = 0; i < this_->n_dim; i++) {
-            if (this_->shape[i] != other_->shape[i]) {
-                printf("\nERRO: Multiplicação escalar de tensores de formatos diferentes. (%d - %d)", this_->shape[i], other_->shape[i]);
-                this_->print("this");
-                other_->print("other");
-                exit(1);
-            }
+        if (this_->shape != other_->shape) {
+            printf("\nERRO: Multiplicação escalar de tensores de formatos diferentes. ");
+            this_->print("this");
+            other_->print("other");
+            exit(1);
         }
 
-        float* new_data = new float[this_->size];
+        std::vector<float> result_data(this_->size);
         for (int i = 0; i < this_->size; i++) {
-            new_data[i] = this_->data[i] * other_->data[i];
+            result_data[i] = this_->data[i] * other_->data[i];
         }
-        Tensor* result = new Tensor(new_data, this_->shape, this_->n_dim, requires_grad);
+
+        std::vector<int> result_shape = this_->shape;
+        Tensor* result = new Tensor(result_data, result_shape, requires_grad);
         if (requires_grad) {
             result->op = "Mul";
             result->grad_fn = new Mul(this_, other_);
@@ -117,20 +113,20 @@
         this_ = handle_broadcast(this, other);
         other_ = handle_broadcast(other, this_);
 
-        for (int i = 0; i < this_->n_dim; i++) {
-            if (this_->shape[i] != other_->shape[i]) {
-                printf("\nERRO: Divisão de tensores de formatos diferentes.");
-                this_->print("Div 1");
-                other_->print("Div 2");
-                exit(1);
-            }
+        if (this_->shape != other_->shape) {
+            printf("\nERRO: Divisão de tensores de formatos diferentes.");
+            this_->print("Div 1");
+            other_->print("Div 2");
+            exit(1);
+        }
+        
+        std::vector<float> result_data(this_->size);
+        for (int i = 0; i < this_->size; i++) {
+            result_data[i] = this_->data[i] / other_->data[i];
         }
 
-        float* new_data = new float[this_->size];
-        for (int i = 0; i < this_->size; i++) {
-            new_data[i] = this_->data[i] / other_->data[i];
-        }
-        Tensor* result = new Tensor(new_data, this_->shape, this_->n_dim, requires_grad);
+        std::vector<int> result_shape = this_->shape;
+        Tensor* result = new Tensor(result_data, result_shape, requires_grad);
         if (requires_grad) {
             result->op = "Div";
             result->grad_fn = new Div(this, other);
@@ -157,7 +153,7 @@
                 exit(1);
             }
             int result_size = other->shape[1];
-            float* result_data = new float[result_size];
+            std::vector<float> result_data(result_size);
 
             // matriz x vetor
             for (int i = 0; i < result_size; i++) {
@@ -167,8 +163,8 @@
                 }
             }
             
-            int result_shape[2] = {1, result_size};
-            Tensor* result = new Tensor(result_data, result_shape, 2, other->requires_grad);
+            std::vector<int> result_shape = {1, result_size};
+            Tensor* result = new Tensor(result_data, result_shape, other->requires_grad);
             if (requires_grad) {
                 result->op = "Matmul1";
                 result->grad_fn = new MatMul(this, other);
@@ -188,7 +184,7 @@
             }
 
             int result_size = shape[0];
-            float* result_data = new float[result_size];
+            std::vector<float> result_data(result_size);
 
             // matriz x vetor
             for (int i = 0; i < result_size; i++) {
@@ -197,8 +193,8 @@
                     result_data[i] += data[j * strides[0] + i] * other->data[j];
                 }
             }
-            int result_shape[] = {result_size};
-            Tensor* result = new Tensor(result_data, result_shape, 1, requires_grad);
+            std::vector<int> result_shape = {result_size};
+            Tensor* result = new Tensor(result_data, result_shape, requires_grad);
             if (requires_grad) {
                 result->op = "Matmul2";
                 result->grad_fn = new MatMul(this, other);
@@ -222,7 +218,7 @@
         int n = other->shape[1];
         int p = shape[1];
     
-        float* new_data = new float[m * n];
+        std::vector<float> result_data(m * n);
 
         for (int i = 0; i < m; i++) {
             for (int j = 0; j < n; j++) {
@@ -230,11 +226,12 @@
                 for (int k = 0; k < p; k++) {
                     sum += data[i * strides[0] + k] * other->data[k * other->strides[0] + j * other->strides[1]];
                 }
-                new_data[i * n + j] = sum;
+                result_data[i * n + j] = sum;
             }
         }
-        int new_shape[] = {m, n};
-        Tensor* result = new Tensor(new_data, new_shape, n_dim, requires_grad);
+
+        std::vector<int> result_shape = {m, n};
+        Tensor* result = new Tensor(result_data, result_shape, requires_grad);
         if (requires_grad) {
             result->op = "Matmul3";
             result->grad_fn = new MatMul(this, other);
@@ -244,29 +241,36 @@
 
     // operações Tensor x float
     Tensor* Tensor::operator + (float scalar)  {
-        float* new_data = new float[size];
+
+        std::vector<float> result_data(size);
         for (int i = 0; i < size; i++) {
-            new_data[i] = data[i] + scalar;
+            result_data[i] = data[i] + scalar;
         }
-        Tensor* result = new Tensor(new_data, shape, n_dim, requires_grad);
+
+        std::vector<int> result_shape = shape;
+        Tensor* result = new Tensor(result_data, result_shape, requires_grad);
         return result;
     }
 
     Tensor* Tensor::operator - (float scalar)  {
-        float* new_data = new float[size];
+        std::vector<float> result_data(size);
         for (int i = 0; i < size; i++) {
-            new_data[i] = data[i] - scalar;
+            result_data[i] = data[i] - scalar;
         }
-        Tensor* result = new Tensor(new_data, shape, n_dim, requires_grad);
+
+        std::vector<int> result_shape = shape;
+        Tensor* result = new Tensor(result_data, result_shape, requires_grad);
         return result;
     }
 
     Tensor* Tensor::operator * (float scalar)  {
-        float* new_data = new float[size];
+        std::vector<float> result_data(size);
         for (int i = 0; i < size; i++) {
-            new_data[i] = data[i] * scalar;
+            result_data[i] = data[i] * scalar;
         }
-        Tensor* result = new Tensor(new_data, shape, n_dim, requires_grad);
+
+        std::vector<int> result_shape = shape;
+        Tensor* result = new Tensor(result_data, result_shape, requires_grad);
         if (requires_grad) {
             result->op = "ScalarMul";
             result->grad_fn = new Scalar_Mul(this, scalar);
@@ -297,13 +301,13 @@
     
     Tensor* Tensor::scalar_div (float scalar) {
 
-        // nem sei como esse aqui funcionou, ver depois se tá certo
-
-        float* new_data = new float[size];
+        std::vector<float> result_data(size);
         for (int i = 0; i < size; i++) {
-            new_data[i] = scalar / data[i];
+            result_data[i] = scalar / data[i];
         }
-        Tensor* result = new Tensor(new_data, shape, n_dim, requires_grad);
+
+        std::vector<int> result_shape = shape;
+        Tensor* result = new Tensor(result_data, result_shape, requires_grad);
         return result;
     }
 

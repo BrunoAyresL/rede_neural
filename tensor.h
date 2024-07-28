@@ -19,72 +19,55 @@ public:
     int n_dim;
     
     int size;
-    float* data;
-    int* strides;
-    int* shape;
+    std::vector<float> data;
+    std::vector<int> strides;
+    std::vector<int> shape;
 
     bool requires_grad;
     bool keep_grad;
 
     Function* grad_fn;
     Tensor* grad;
-    bool is_scalar;
     std::string op;
 
-    Tensor* origin;
 
     // constructor
-    Tensor(float* new_data, int* new_shape, int new_n_dim, bool req_grad=false) {
-        is_scalar = false;
-        requires_grad = req_grad;
-        keep_grad = false;
-        if (req_grad) {
-            TensorRegistry::add(this);
-        }
+    Tensor(std::vector<float> new_data, std::vector<int> new_shape, bool req_grad=false) {
 
-        origin = nullptr;
+        data = new_data;
+        shape = new_shape;
+        requires_grad = req_grad;
+        op = "NULL";
         grad = nullptr;
         grad_fn = new NullFunction();
-        op.assign("NULL");
+        keep_grad = false;
 
-        n_dim = new_n_dim;
+        n_dim = new_shape.size();
+
         size = 1;
-        shape = new int[n_dim];
-        if (shape == nullptr) {
-            printf("kkkkkkkkkk");
-            throw std::runtime_error("Error: Failed to allocate memory for tensor shape.");
-        }
-        for (int i = 0; i < n_dim; i++) {
-            shape[i] = new_shape[i];
-            size *= new_shape[i];
-        }
-        data = new_data; 
-        if (data == nullptr) {
-            printf("kkkkkkkkkk");
-            throw std::runtime_error("Error: Failed to allocate memory for tensor data.");
+        for (auto dim : shape) {
+            size *= dim;
         }
 
-        strides = new int[n_dim];
-        if (strides == nullptr) {
-            printf("kkkkkkkkkk");
-            throw std::runtime_error("Error: Failed to allocate memory for tensor strides.");
-        }
+        strides.resize(n_dim);
+
         int stride = 1;
         for (int i = n_dim - 1; i >= 0; i--) {
             strides[i] = stride;
             stride *= shape[i];
-        }         
+        }   
+
+        TensorRegistry::add(this);   
+        
+        //printf("\nnew Tensor: size=%d shape=(%d, %d) n_dim=%d strides=(%d, %d)", size, shape[0], shape[1], n_dim, strides[0], strides[1]);  
     }
 
     // destructor
     ~Tensor() {
         TensorRegistry::remove(this);
-        delete[] data;
         if (grad != nullptr) {
             delete grad;
         }
-        delete[] strides;
-        delete[] shape;
         delete grad_fn;
     }
 
@@ -134,7 +117,7 @@ public:
     Tensor* max(int dim);
     Tensor* one_hot(int size);
     Tensor* index(Tensor* X, Tensor* Y);
-    Tensor* reshape(int* new_shape, int new_n_dim);
+    Tensor* reshape(std::vector<int> new_shape);
 
 
     void print(const char str[]  = " ") {
@@ -197,12 +180,6 @@ public:
 
         printf("): (");
         
-        
-        if (is_scalar) {
-            printf("[%f", data[0]);
-            printf("]");
-            return;      
-        }
         if (n_dim == 1) {
             printf("[");
             for (int i = 0; i < size; i++) {
@@ -238,6 +215,6 @@ public:
 };
 
 // nome ruim
-Tensor* tensor_fill(float x, int* shape, int n_dim, bool req_grad);
+Tensor* tensor_fill(float x, std::vector<int> shape,  bool req_grad);
 
 #endif
